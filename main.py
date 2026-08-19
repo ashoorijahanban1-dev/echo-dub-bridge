@@ -39,7 +39,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Schemas
 class CourseDispatchRequest(BaseModel):
     video_url: str
     title: str
@@ -52,31 +51,26 @@ class ManualEmbedRequest(BaseModel):
     title: str
     telegram_link: Optional[str] = None
 
-# ==============================================================================
-# Endpoints
-# ==============================================================================
-
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Health check for Coolify."""
     return {"status": "ok", "app": settings.APP_NAME, "cache_dir": str(settings.CACHE_DIR)}
 
 @app.get("/stream/{video_id}", tags=["Streaming"])
 async def stream_video(video_id: str, request: Request):
     """
-    High-Speed Domestic Video Streaming with HTTP Range (206 Partial Content) support.
-    Streams directly to Iranian browsers without needing a VPN!
+    High-Speed Domestic Video Streaming without VPN (HTTP 206 Range support).
     """
-    # Connects to US Worker stream endpoint or serves from local NVMe cache
     remote_source = f"{settings.US_WORKER_API_URL.rstrip('/')}/storage/output/{video_id}.mp4"
     return await VideoStreamProxy.get_video_stream(video_id, remote_source, request)
 
 @app.post("/api/v1/bridge/dispatch", tags=["Dispatch"])
 async def dispatch_course_video(req: CourseDispatchRequest):
     """
-    Sends an educational video to the US Worker for AI dubbing and schedules automatic publishing.
+    1. Downloads video from Downloadly.ir with Iranian IP (bypassing foreign Geo-IP blocking).
+    2. Sends the video to US Worker for AI dubbing.
+    3. Updates WordPress post upon completion.
     """
-    result = await JobDispatcher.dispatch_video_to_us_worker(
+    result = await JobDispatcher.fetch_from_iran_and_dispatch(
         video_url=req.video_url,
         title=req.title,
         voice_gender=req.voice_gender,
@@ -86,9 +80,6 @@ async def dispatch_course_video(req: CourseDispatchRequest):
 
 @app.post("/api/v1/bridge/embed-manual", tags=["WordPress"])
 async def manual_embed_post(req: ManualEmbedRequest, request: Request):
-    """
-    Manually generates and injects the dubbed video player into a Downloadly.ir post.
-    """
     base_host = request.base_url
     stream_url = f"{str(base_host).rstrip('/')}/stream/{req.video_id}"
     
@@ -105,7 +96,6 @@ async def manual_embed_post(req: ManualEmbedRequest, request: Request):
         "post_id": req.post_id
     }
 
-# Mount static files (Frontend Studio) if directory exists
 static_path = Path(__file__).resolve().parent / "static"
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
