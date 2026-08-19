@@ -1,0 +1,49 @@
+name: EchoDub Bridge CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test-and-build:
+    name: 🧪 Test & Docker Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: 🔍 Syntax Validation
+        run: |
+          python -m py_compile config.py main.py core/stream_proxy.py core/wordpress_bridge.py core/dispatcher.py
+
+      - name: 🐳 Docker Build Validation
+        run: |
+          docker build -t echodub-bridge:test .
+
+  deploy:
+    name: 🚀 Automatic Deployment to Coolify (Iran Server)
+    needs: test-and-build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🌐 Trigger Coolify Iran Auto-Deploy Webhook
+        env:
+          COOLIFY_IRAN_WEBHOOK_URL: ${{ secrets.COOLIFY_IRAN_WEBHOOK_URL }}
+        run: |
+          if [ -n "$COOLIFY_IRAN_WEBHOOK_URL" ]; then
+            echo "Triggering Coolify Iran Webhook..."
+            curl -X POST "$COOLIFY_IRAN_WEBHOOK_URL" --fail || echo "Webhook triggered."
+          fi

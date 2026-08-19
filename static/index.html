@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>اکوداب استودیو | پلتفرم شخصی دوبله هوشمند ویدیو با هوش مصنوعی</title>
+  <meta name="description" content="پلتفرم و استودیوی اختصاصی برای دوبله هوشمند ویدیو با هوش مصنوعی و صدای طبیعی انسان، تطابق زمانی لب‌سینک، شبیه‌سازی صدا و زیرنویس همگام.">
+  <meta name="keywords" content="دوبله هوش مصنوعی, دوبلاژ ویدیو, شبیه سازی صدا, ترجمه ویدیو, AI Dubbing, Voice Cloning">
+
+  <!-- OpenGraph Meta Tags -->
+  <meta property="og:title" content="اکوداب استودیو | دوبله هوشمند ویدیو با هوش مصنوعی">
+  <meta property="og:description" content="تبدیل، ترجمه و دوبله ویدیویی با حفظ دقیق لحن، احساس و صدای طبیعی انسانی.">
+  <meta property="og:type" content="website">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="lang-fa">
+
+  <!-- Site Header & Navigation -->
+  <header class="site-header">
+    <div class="container">
+      <div class="nav-inner">
+        <!-- Brand Logo -->
+        <a href="#hero" class="brand-logo">
+          <div class="brand-icon-box">
+            <div class="soundwave-anim">
+              <span class="soundwave-bar"></span>
+              <span class="soundwave-bar"></span>
+              <span class="soundwave-bar"></span>
+              <span class="soundwave-bar"></span>
+            </div>
+          </div>
+          <div>
+            <span data-i18n="brandName">اکوداب استودیو</span>
+          </div>
+        </a>
+
+        <!-- Main Navigation Links -->
+        <ul class="nav-menu">
+          <li><a href="#hero" class="nav-link active" data-i18n="navHome">صفحه اصلی</a></li>
+          <li><a href="#studio" class="nav-link" data-i18n="navStudio">استودیو دوبله</a></li>
+          <li><a href="#voicelab" class="nav-link" data-i18n="navVoiceLab">آزمایشگاه صدا</a></li>
+          <li><a href="#showcase" class="nav-link" data-i18n="navShowcase">نمونه‌کارها</a></li>
+          <li><a href="#tech" class="nav-link" data-i18n="navTech">تکنولوژی پایپ‌لاین</a></li>
+          <li><a href="#pricing" class="nav-link" data-i18n="navPricing">تعرفه‌ها و سفارش</a></li>
+        </ul>
+
+        <!-- Header Actions -->
+        <div class="nav-actions">
+          <!-- Language Toggle Button -->
+          <button id="langToggleBtn" class="btn btn-secondary" style="font-size:0.85rem; padding:0.45rem 0.95rem;">
+            English
+          </button>
+          <!-- Admin Dashboard Trigger -->
+          <button id="openAdminBtn" class="btn btn-secondary" style="font-size:0.85rem; padding:0.45rem 0.95rem;" data-i18n="navAdmin">
+            ⚡ پنل مدیریت
+          </button>
+          <!-- Primary CTA Button -->
+          <a href="#studio" class="btn btn-primary" data-i18n="btnStartDubbing">
+            ورود به استودیو
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section id="hero" class="hero-section">
+    <div class="container">
+      <div class="hero-grid">
+        <!-- Hero Left Column: Copy & Actions -->
+        <div class="hero-content">
+          <div>
+            <span class="badge-pill" data-i18n="heroBadge">✨ نسل نوین دوبلاژ انسانی با شبیه‌سازی دقیق حس و لحن</span>
+          </div>
+          <h1 class="hero-title">
+            <span data-i18n="heroTitlePrefix">دوبله هوشمند ویدیو با</span><br>
+            <span class="gradient-text" data-i18n="heroTitleHighlight">هوش مصنوعی و صدای انسانی</span>
+          </h1>
+          <p class="hero-subtitle" data-i18n="heroSubtitle">
+            استودیوی اختصاصی برای تبدیل، ترجمه همگام و دوبله ویدیویی با حفظ دقیق لحن، احساس و صدای اصلی گوینده با بالاترین کیفیت استودیویی در زبان‌های فارسی و بین‌المللی.
+          </p>
+
+          <div class="hero-actions">
+            <a href="#studio" class="btn btn-primary" data-i18n="btnStartDubbing">
+              🎙️ ورود به استودیو دوبله
+            </a>
+            <a href="#showcase" class="btn btn-secondary" data-i18n="btnExploreShowcase">
+              🎬 مشاهده نمونه‌های دوبله
+            </a>
+            <a href="#voicelab" class="btn btn-cyan" data-i18n="btnVoiceCloning">
+              🧬 شبیه‌سازی صدای اختصاصی
+            </a>
+          </div>
+
+          <!-- Hero Metrics -->
+          <div class="hero-metrics-row">
+            <div class="metric-item">
+              <span class="metric-num" data-i18n="statVideosDubbed">+۲,۵۰۰ ویدیو دوبله شده</span>
+              <span class="metric-lbl">ویدیو پردازش‌شده</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-num" data-i18n="statAccuracy">۹۹.۴٪ دقت لب‌سینک و تایمینگ</span>
+              <span class="metric-lbl">تطابق زمانی زیرنویس</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-num" data-i18n="statVoices">+۵۰ صدای طبیعی با احساسات</span>
+              <span class="metric-lbl">گوینده اختصاصی فارسی</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero Right Column: Interactive Video Player Card -->
+        <div class="hero-player-card">
+          <div class="hero-player-header">
+            <div class="player-status-badge">
+              <span class="pulse-dot"></span>
+              <span id="heroTrackBadge" data-i18n="heroPreviewTrackDubbed">دوبله هوشمند (فارسی طبیعی)</span>
+            </div>
+            <span class="badge-pill" style="font-size:0.75rem;" data-i18n="heroVoiceSpeaker">گوینده: هوش مصنوعی آریا (لحن سینمایی)</span>
+          </div>
+
+          <div class="video-container">
+            <video id="heroVideoElement" class="video-element" playsinline loop muted autoplay>
+              <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+            </video>
+            <div id="heroSubtitleOverlay" class="video-subtitle-overlay">
+              هوش مصنوعی اکنون به سطحی رسیده که نه تنها کلمات، بلکه تمام احساسات و لحن انسانی را بازآفرینی می‌کند.
+            </div>
+          </div>
+
+          <div class="hero-player-footer">
+            <div class="track-switcher-box">
+              <button class="track-btn hero-track-btn" data-track="original" data-i18n="heroPreviewTrackOriginal">
+                🎵 صدای اصلی (انگلیسی)
+              </button>
+              <button class="track-btn hero-track-btn active" data-track="dubbed" data-i18n="heroPreviewTrackDubbed">
+                🎙️ دوبله هوشمند (فارسی طبیعی)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive AI Dubbing Studio Section -->
+  <section id="studio" class="studio-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge-pill">⚡ Neural Video Pipeline</span>
+        <h2 class="section-title" data-i18n="studioHeading">استودیوی اختصاصی دوبله ویدیو</h2>
+        <p class="section-subtitle" data-i18n="studioSubheading">
+          ویدیو خود را بارگذاری کنید یا از نمونه‌های آماده استفاده نمایید و مراحل ۵ گانه پردازش هوش مصنوعی را زنده تماشا کنید.
+        </p>
+      </div>
+
+      <!-- 5-Stage Stepper Indicator -->
+      <div class="pipeline-stepper">
+        <div class="step-card active" id="stepIndicator1">
+          <span class="step-num" data-i18n="step1Title">۱. انتخاب منبع ویدیو</span>
+          <span class="step-title">آپلود / نمونه</span>
+          <span class="step-desc" data-i18n="step1Desc">فایل ویدیو یا یوتیوب</span>
+        </div>
+        <div class="step-card" id="stepIndicator2">
+          <span class="step-num" data-i18n="step2Title">۲. زبان و گویندگان</span>
+          <span class="step-title">Diarization</span>
+          <span class="step-desc" data-i18n="step2Desc">تفکیک صداهای گویندگان</span>
+        </div>
+        <div class="step-card" id="stepIndicator3">
+          <span class="step-num" data-i18n="step3Title">۳. استخراج و ترجمه</span>
+          <span class="step-title">Whisper & Lip-Sync</span>
+          <span class="step-desc" data-i18n="step3Desc">تطابق هجا و زمان‌بندی</span>
+        </div>
+        <div class="step-card" id="stepIndicator4">
+          <span class="step-num" data-i18n="step4Title">۴. سنتز صدای طبیعی</span>
+          <span class="step-title">Neural Human Voice</span>
+          <span class="step-desc" data-i18n="step4Desc">اعمال حس و لحن فارسی</span>
+        </div>
+        <div class="step-card" id="stepIndicator5">
+          <span class="step-num" data-i18n="step5Title">۵. خروجی و مسترینگ</span>
+          <span class="step-title">Final Mastering</span>
+          <span class="step-desc" data-i18n="step5Desc">ترکیب با موزیک متن</span>
+        </div>
+      </div>
+
+      <!-- Studio Work Area -->
+      <div class="studio-grid">
+        <!-- Left Column: Controls & Pipeline Terminal -->
+        <div class="studio-panel">
+          <!-- Dropzone -->
+          <div id="videoDropzone" class="dropzone">
+            <input type="file" id="videoFileInput" accept="video/*,audio/*" style="display:none;">
+            <div class="dropzone-icon">📁</div>
+            <div style="font-weight:700;" data-i18n="uploadZoneText">ویدیو یا صوت خود را به اینجا بکشید یا برای انتخاب کلیک کنید</div>
+            <div style="font-size:0.8rem; color:var(--text-dim);" data-i18n="uploadFormats">فرمت‌های پشتیبانی شده: MP4, WebM, MOV, MP3 (حداکثر ۵۰۰ مگابایت)</div>
+          </div>
+
+          <!-- Presets -->
+          <div class="form-group">
+            <label class="form-label" data-i18n="orChoosePreset">یا یک ویدیوی نمونه برای تست انتخاب کنید:</label>
+            <div class="preset-pills-row">
+              <button class="preset-pill active" data-preset="ted" data-i18n="presetTed">🎙️ سخنرانی TED - هوش مصنوعی و آینده بشر</button>
+              <button class="preset-pill" data-preset="movie" data-i18n="presetMovie">🎬 صحنه فیلم سینمایی Interstellar</button>
+              <button class="preset-pill" data-preset="tech" data-i18n="presetTech">💻 بررسی تکنولوژی و هوش مصنوعی اپل</button>
+              <button class="preset-pill" data-preset="nature" data-i18n="presetNature">🌍 مستند حیات وحش BBC</button>
+            </div>
+          </div>
+
+          <!-- Language Configuration -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" data-i18n="sourceLang">زبان مبدا ویدیو:</label>
+              <select id="sourceLangSelect" class="form-select">
+                <option value="en">English (انگلیسی)</option>
+                <option value="fr">French (فرانسوی)</option>
+                <option value="de">German (آلمانی)</option>
+                <option value="ar">Arabic (عربی)</option>
+                <option value="tr">Turkish (ترکی استانبولی)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" data-i18n="targetLang">زبان مقصد دوبله:</label>
+              <select id="targetLangSelect" class="form-select">
+                <option value="fa">فارسی (Persian / Farsi)</option>
+                <option value="en">English (انگلیسی)</option>
+                <option value="ar">العربية (عربی فصیح)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Toggles -->
+          <div class="toggle-switch-row">
+            <span style="font-size:0.9rem; font-weight:600;" data-i18n="speakerDetection">تشخیص هوشمند تفکیک چند گوینده (Diarization)</span>
+            <input type="checkbox" checked style="accent-color:var(--accent-purple); transform:scale(1.2);">
+          </div>
+          <div class="toggle-switch-row">
+            <span style="font-size:0.9rem; font-weight:600;" data-i18n="preserveBGM">حفظ موسیقی و افکت‌های محیطی پس‌زمینه (Vocal Isolation & Ducking)</span>
+            <input type="checkbox" checked style="accent-color:var(--accent-cyan); transform:scale(1.2);">
+          </div>
+
+          <!-- Run Pipeline Action Button -->
+          <button id="btnRunPipeline" class="btn btn-primary" style="padding:0.9rem; font-size:1.05rem;" data-i18n="btnRunPipeline">
+            <span>✨</span> شروع پردازش و دوبله هوشمند
+          </button>
+
+          <!-- Live Pipeline Terminal -->
+          <div class="terminal-card">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span style="color:var(--text-dim); font-size:0.75rem;" data-i18n="pipelineLiveLogs">گزارش زنده فرآیند پردازش هوش مصنوعی</span>
+            </div>
+            <div id="terminalBody" class="terminal-body">
+              <div class="log-line">
+                <span class="log-time">[EchoDub Engine]</span>
+                <span class="log-info">➜ استودیو آماده پردازش است. روی دکمه شروع کلیک کنید.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-container">
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-muted);">
+              <span data-i18n="pipelineProgress">پیشرفت کل پایپ‌لاین:</span>
+              <span id="pipelineProgressText">آماده</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="pipelineProgressBar" class="progress-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Studio Player, Waveform & Subtitle Timeline -->
+        <div class="studio-panel">
+          <div class="studio-player-container">
+            <!-- Studio Video Frame -->
+            <div class="video-container" style="border-radius:var(--radius-md); border:1px solid var(--border-subtle);">
+              <video id="studioVideoElement" class="video-element" controls playsinline>
+                <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+              </video>
+              <div id="studioSubtitleOverlay" class="video-subtitle-overlay">
+                متن زیرنویس و دیالوگ دوبله شده در این قسمت همگام با تایم ویدیو نمایش داده می‌شود.
+              </div>
+            </div>
+
+            <!-- Dual Audio Track Switcher -->
+            <div class="track-switcher-box">
+              <button class="track-btn studio-track-btn" data-track="original" data-i18n="activeTrackOriginal">
+                🎵 پخش صدای اصلی
+              </button>
+              <button class="track-btn studio-track-btn active" data-track="dubbed" data-i18n="activeTrackDubbed">
+                🎙️ پخش دوبله هوش مصنوعی (فارسی)
+              </button>
+            </div>
+
+            <!-- Waveform Canvas Box -->
+            <div class="waveform-canvas-box">
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-dim); margin-bottom:4px;">
+                <span>Waveform Spectrum (48kHz Studio Mux)</span>
+                <span style="color:var(--accent-emerald);">AI Lip-Sync: Synced</span>
+              </div>
+              <canvas id="waveformCanvas"></canvas>
+            </div>
+
+            <!-- Ducking Slider -->
+            <div class="form-group">
+              <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:var(--text-muted);">
+                <label data-i18n="duckingControl">میزان صدای زمینه (BGM Ducking):</label>
+                <span id="duckingVal">25%</span>
+              </div>
+              <input type="range" id="duckingRange" min="0" max="1" step="0.05" value="0.25" style="accent-color:var(--accent-purple);">
+            </div>
+
+            <!-- Subtitle Synchronizer & Timeline Editor -->
+            <div class="form-group">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label class="form-label" data-i18n="subtitleSyncTitle">ویرایشگر و سنکرون‌ساز زیرنویس و گویندگان</label>
+              </div>
+              <div id="subtitlesEditorContainer" class="subtitle-editor-box">
+                <!-- Subtitle items inserted dynamically -->
+              </div>
+            </div>
+
+            <!-- Export Buttons -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.65rem;">
+              <button id="btnExportSrt" class="btn btn-secondary" style="font-size:0.82rem; padding:0.55rem 0.6rem;" data-i18n="btnExportSrt">
+                📄 دانلود SRT
+              </button>
+              <button id="btnExportAudio" class="btn btn-secondary" style="font-size:0.82rem; padding:0.55rem 0.6rem;" data-i18n="btnExportAudio">
+                🎵 دانلود MP3
+              </button>
+              <button id="btnExportFullVideo" class="btn btn-cyan" style="font-size:0.82rem; padding:0.55rem 0.6rem;" data-i18n="btnExportFullVideo">
+                🎬 دانلود MP4
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Voice Lab & Emotion Tuner Section -->
+  <section id="voicelab" class="voicelab-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge-pill">🧬 Neural Voice Cloning</span>
+        <h2 class="section-title" data-i18n="voiceLabTitle">آزمایشگاه صدا و کلونینگ (Voice Lab)</h2>
+        <p class="section-subtitle" data-i18n="voiceLabSubtitle">
+          تست زنده صداهای طبیعی فارسی و انگلیسی، تنظیم حالات احساسی و تست شبیه‌سازی صدای شخصی
+        </p>
+      </div>
+
+      <div class="voicelab-grid">
+        <!-- Voice Persona & Emotion Selector -->
+        <div class="studio-panel">
+          <div class="form-group">
+            <label class="form-label" data-i18n="selectVoiceProfile">انتخاب گوینده هوش مصنوعی:</label>
+            <div id="voicePersonaSelector" class="voice-card-selector">
+              <!-- Dynamically populated voice cards -->
+            </div>
+          </div>
+
+          <!-- Emotion Chips -->
+          <div class="form-group">
+            <label class="form-label" data-i18n="voiceEmotionLabel">تنظیم حس و لحن گوینده:</label>
+            <div class="emotion-chips-row">
+              <button class="emotion-chip active" data-emotion="narrative" data-i18n="emotionNarrative">روایی و مستند (Narrative)</button>
+              <button class="emotion-chip" data-emotion="cinematic" data-i18n="emotionCinematic">سینمایی و دراماتیک (Dramatic)</button>
+              <button class="emotion-chip" data-emotion="conversational" data-i18n="emotionConversational">صمیمی و محاوره‌ای (Conversational)</button>
+              <button class="emotion-chip" data-emotion="energetic" data-i18n="emotionEnergetic">باانرژی و هیجانی (Energetic)</button>
+              <button class="emotion-chip" data-emotion="formal" data-i18n="emotionFormal">رسمی و خبری (Formal)</button>
+            </div>
+          </div>
+
+          <!-- Speed and Pitch Sliders -->
+          <div class="form-row">
+            <div class="form-group">
+              <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+                <label data-i18n="speedLabel">سرعت بیان (Speed):</label>
+                <span id="voiceSpeedVal">1.0x</span>
+              </div>
+              <input type="range" id="voiceSpeedSlider" min="0.7" max="1.4" step="0.05" value="1.0" style="accent-color:var(--accent-purple);">
+            </div>
+            <div class="form-group">
+              <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+                <label data-i18n="pitchLabel">گام صدا (Pitch):</label>
+                <span id="voicePitchVal">1.0x</span>
+              </div>
+              <input type="range" id="voicePitchSlider" min="0.7" max="1.3" step="0.05" value="1.0" style="accent-color:var(--accent-cyan);">
+            </div>
+          </div>
+
+          <!-- Custom Text Input for Testing -->
+          <div class="form-group">
+            <label class="form-label" data-i18n="sampleTextInput">متن دلخواه برای تست صدا را بنویسید:</label>
+            <textarea id="voiceSampleText" class="form-textarea" rows="3" placeholder="متن دلخواه را اینجا بنویسید..."></textarea>
+          </div>
+
+          <button id="btnSynthesizeVoice" class="btn btn-primary" style="width:100%;" data-i18n="btnSynthesize">
+            🎙️ تولید و پخش صدای زنده
+          </button>
+        </div>
+
+        <!-- Voice Cloning Sandbox -->
+        <div class="studio-panel clone-highlight-card">
+          <div>
+            <span class="badge-pill" style="border-color:var(--border-cyan); color:var(--accent-cyan);">Zero-Shot Acoustic Cloning</span>
+          </div>
+          <h3 style="font-size:1.4rem; font-weight:800;" data-i18n="cloneBoxTitle">شبیه‌سازی صدای شخصی (Voice Clone)</h3>
+          <p style="font-size:0.95rem; color:var(--text-muted); line-height:1.7;" data-i18n="cloneBoxDesc">
+            یک فایل صوتی ۱۰ ثانیه‌ای از صدای خود ضبط یا آپلود کنید تا اثر انگشت صوتی شما استخراج شود و بتوانید ویدیوها را با صدای اختصاصی خودتان دوبله کنید.
+          </p>
+
+          <div id="voiceFingerprintVisual" class="voice-fingerprint-visual">
+            <div class="fingerprint-bar" style="animation-delay:0.1s;"></div>
+            <div class="fingerprint-bar" style="animation-delay:0.3s;"></div>
+            <div class="fingerprint-bar" style="animation-delay:0.2s;"></div>
+            <div class="fingerprint-bar" style="animation-delay:0.4s;"></div>
+            <div class="fingerprint-bar" style="animation-delay:0.15s;"></div>
+            <div class="fingerprint-bar" style="animation-delay:0.35s;"></div>
+            <div class="fingerprint-bar" style="animation-delay:0.25s;"></div>
+            <div class="fingerprint-bar" style="animation-delay:0.45s;"></div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <button id="btnRecordClone" class="btn btn-cyan" style="width:100%;" data-i18n="btnRecordVoice">
+              🎙️ ضبط صدای من (۱۰ ثانیه)
+            </button>
+            <button class="btn btn-secondary" style="width:100%;" data-i18n="btnUploadVoiceSample">
+              📁 آپلود نمونه صوتی
+            </button>
+          </div>
+
+          <div id="cloneStatusMsg" style="display:none; font-size:0.9rem; color:var(--accent-emerald); font-weight:700; text-align:center;">
+            <!-- Clone status -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Showcase Gallery Section -->
+  <section id="showcase" class="showcase-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge-pill">🎬 Portfolio & Showcase</span>
+        <h2 class="section-title" data-i18n="showcaseTitle">نمونه‌کارهای دوبله شده</h2>
+        <p class="section-subtitle" data-i18n="showcaseSubtitle">
+          مقایسه زنده کیفیت ترجمه، لحن انسانی و هماهنگی صوتی در پروژه‌های واقعی
+        </p>
+      </div>
+
+      <!-- Categories Filter Navigation -->
+      <div class="filters-nav">
+        <button class="filter-btn active" data-filter="all" data-i18n="filterAll">همه دسته‌ها</button>
+        <button class="filter-btn" data-filter="cinema" data-i18n="filterCinema">سینما و فیلم</button>
+        <button class="filter-btn" data-filter="ted" data-i18n="filterTed">سخنرانی و دانش</button>
+        <button class="filter-btn" data-filter="tech" data-i18n="filterTech">تکنولوژی و یوتیوب</button>
+        <button class="filter-btn" data-filter="doc" data-i18n="filterDoc">مستند طبیعت</button>
+      </div>
+
+      <!-- Showcase Cards Grid -->
+      <div id="showcaseGridContainer" class="showcase-grid">
+        <!-- Rendered dynamically by AdminCMS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- AI Pipeline Technology Architecture Section -->
+  <section id="tech" class="tech-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge-pill">⚙️ Engineering & AI Models</span>
+        <h2 class="section-title" data-i18n="techTitle">معماری پایپ‌لاین و هوش مصنوعی</h2>
+        <p class="section-subtitle" data-i18n="techSubtitle">
+          ترکیب قدرتمندترین مدل‌های زبانی، بینایی ماشین و سنتز عصبی صوت
+        </p>
+      </div>
+
+      <div class="tech-grid">
+        <div class="tech-card">
+          <div class="tech-icon-circle">🎛️</div>
+          <h3 style="font-size:1.2rem; font-weight:700;" data-i18n="tech1Title">تفکیک سورس صدا با Demucs</h3>
+          <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.7;" data-i18n="tech1Desc">
+            جداسازی لاین گفتار اصلی از موسیقی متن و افکت‌های صوتی محیطی بدون هیچ افت کیفیتی.
+          </p>
+        </div>
+
+        <div class="tech-card">
+          <div class="tech-icon-circle">🎙️</div>
+          <h3 style="font-size:1.2rem; font-weight:700;" data-i18n="tech2Title">تشخیص گفتار Whisper Large-v3</h3>
+          <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.7;" data-i18n="tech2Desc">
+            تبدیل دقیق صحبت به متن همراه با تایم‌استمپ دقیق تک‌تک کلمات و تفکیک گویندگان.
+          </p>
+        </div>
+
+        <div class="tech-card">
+          <div class="tech-icon-circle">👄</div>
+          <h3 style="font-size:1.2rem; font-weight:700;" data-i18n="tech3Title">موتور ترجمه و تطابق لب (Lip-Align)</h3>
+          <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.7;" data-i18n="tech3Desc">
+            بهینه‌سازی جمله‌بندی ترجمه برای هماهنگی کامل با طول هجاها و زمان‌بندی ادای کلمات اصلی.
+          </p>
+        </div>
+
+        <div class="tech-card">
+          <div class="tech-icon-circle">🧠</div>
+          <h3 style="font-size:1.2rem; font-weight:700;" data-i18n="tech4Title">سنتز صدای طبیعی و کلونینگ عصبی</h3>
+          <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.7;" data-i18n="tech4Desc">
+            تولید صدای روان با تنفس طبیعی، لهجه اصیل فارسی و بیان عواطف انسانی بدون حالت رباتیک.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing & Packages Section -->
+  <section id="pricing" class="pricing-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge-pill">💎 Services & Plans</span>
+        <h2 class="section-title" data-i18n="pricingTitle">خدمات و تعرفه‌های دوبله هوشمند</h2>
+        <p class="section-subtitle" data-i18n="pricingSubtitle">
+          مناسب برای تولیدکنندگان محتوا، کسب‌وکارها، کانال‌های یوتیوب و پلتفرم‌های آموزشی
+        </p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Starter Plan -->
+        <div class="pricing-card">
+          <div>
+            <h3 style="font-size:1.3rem; font-weight:700;" data-i18n="planStarterTitle">پکیج استارتر محتوا</h3>
+            <div class="plan-price-box">
+              <span class="plan-price" data-i18n="planStarterPrice">۳۹۰,۰۰۰ تومان</span>
+              <span class="plan-duration" data-i18n="planStarterDuration">برای هر ۱۰ دقیقه ویدیو</span>
+            </div>
+            <ul class="plan-features-list">
+              <li class="plan-feature-item" data-i18n="planStarterFeat1">دوبله کامل با ۲ گوینده هوش مصنوعی</li>
+              <li class="plan-feature-item" data-i18n="planStarterFeat2">حفظ کامل موسیقی متن و افکت‌ها</li>
+              <li class="plan-feature-item" data-i18n="planStarterFeat3">فایل زیرنویس هماهنگ SRT</li>
+              <li class="plan-feature-item" data-i18n="planStarterFeat4">تحویل فوق‌سریع در کمتر از ۲۰ دقیقه</li>
+            </ul>
+          </div>
+          <a href="#order" class="btn btn-secondary" style="width:100%;">ثبت سفارش پکیج</a>
+        </div>
+
+        <!-- Pro Studio Plan (Featured) -->
+        <div class="pricing-card featured">
+          <div class="pricing-badge-popular" data-i18n="planProBadge">محبوب‌ترین انتخاب</div>
+          <div>
+            <h3 style="font-size:1.3rem; font-weight:700;" data-i18n="planProTitle">پکیج حرفه‌ای استودیو</h3>
+            <div class="plan-price-box">
+              <span class="plan-price" data-i18n="planProPrice">۸۹۰,۰۰۰ تومان</span>
+              <span class="plan-duration" data-i18n="planProDuration">برای هر ۳۰ دقیقه ویدیو</span>
+            </div>
+            <ul class="plan-features-list">
+              <li class="plan-feature-item" data-i18n="planProFeat1">کلونینگ صدای اختصاصی شما یا گویندگان اصلی</li>
+              <li class="plan-feature-item" data-i18n="planProFeat2">تعداد نامحدود گوینده و کاراکتر</li>
+              <li class="plan-feature-item" data-i18n="planProFeat3">تنظیم تخصصی حس و لحن سینمایی</li>
+              <li class="plan-feature-item" data-i18n="planProFeat4">تحویل نسخه 4K با زیرنویس دو زبانه</li>
+            </ul>
+          </div>
+          <a href="#order" class="btn btn-primary" style="width:100%;">ثبت سفارش پکیج پرو</a>
+        </div>
+
+        <!-- Enterprise Plan -->
+        <div class="pricing-card">
+          <div>
+            <h3 style="font-size:1.3rem; font-weight:700;" data-i18n="planEnterpriseTitle">پکیج سازمان‌ها و آکادمی‌ها</h3>
+            <div class="plan-price-box">
+              <span class="plan-price" data-i18n="planEnterprisePrice">تماس بگیرید</span>
+              <span class="plan-duration" data-i18n="planEnterpriseDuration">پروژه‌های بزرگ و دوره‌های آموزشی</span>
+            </div>
+            <ul class="plan-features-list">
+              <li class="plan-feature-item" data-i18n="planEnterpriseFeat1">دوبله انبوه دوره‌ها و محتوای ویدیویی</li>
+              <li class="plan-feature-item" data-i18n="planEnterpriseFeat2">دسترسی مستقیم به API اختصاصی</li>
+              <li class="plan-feature-item" data-i18n="planEnterpriseFeat3">پشتیبانی ۲۴/۷ و تضمین بالاترین کیفیت</li>
+              <li class="plan-feature-item" data-i18n="planEnterpriseFeat4">قرارداد رسمی و حفظ محرمانگی داده‌ها</li>
+            </ul>
+          </div>
+          <a href="#order" class="btn btn-secondary" style="width:100%;">مشاوره و قرارداد سازمانی</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Order & Project Inquiry Form Section -->
+  <section id="order" class="order-section">
+    <div class="container">
+      <div class="order-box">
+        <div style="text-align:center; margin-bottom:2rem;">
+          <h2 style="font-size:2rem; font-weight:800;" data-i18n="orderTitle">سفارش مستقیم دوبله و مشاوره پروژه</h2>
+          <p style="color:var(--text-muted); margin-top:0.5rem;" data-i18n="orderSubtitle">
+            لینک ویدیو یا مشخصات پروژه خود را ارسال کنید تا در سریع‌ترین زمان بررسی و پیش‌نمایش آماده شود.
+          </p>
+        </div>
+
+        <form id="orderForm">
+          <div class="form-row" style="margin-bottom:1rem;">
+            <div class="form-group">
+              <label class="form-label" data-i18n="formName">نام و نام خانوادگی:</label>
+              <input type="text" id="orderName" class="form-input" required placeholder="مثلاً: علی رضایی">
+            </div>
+            <div class="form-group">
+              <label class="form-label" data-i18n="formEmail">ایمیل یا آیدی تلگرام:</label>
+              <input type="text" id="orderEmail" class="form-input" required placeholder="info@domain.com یا @username">
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-bottom:1rem;">
+            <div class="form-group">
+              <label class="form-label" data-i18n="formPhone">شماره تماس:</label>
+              <input type="tel" id="orderPhone" class="form-input" placeholder="۰۹۱۲۳۴۵۶۷۸۹">
+            </div>
+            <div class="form-group">
+              <label class="form-label" data-i18n="formVideoUrl">لینک ویدیو (یوتیوب، آپارات یا فضای ابری):</label>
+              <input type="url" id="orderVideoUrl" class="form-input" placeholder="https://youtube.com/watch?v=...">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.5rem;">
+            <label class="form-label" data-i18n="formNotes">توضیحات و نیازمندی‌های خاص:</label>
+            <textarea id="orderNotes" class="form-textarea" rows="4" placeholder="مثلاً: لحن رسمی یا صمیمی، نیاز به شبیه‌سازی صدای خودم، زمان تحویل..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%; padding:0.9rem; font-size:1.05rem;" data-i18n="btnSubmitOrder">
+            🚀 ثبت درخواست و برآورد زمان و هزینه
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Admin CMS Dashboard Modal -->
+  <div id="adminModal" class="modal-backdrop">
+    <div class="admin-window">
+      <!-- Admin Header -->
+      <div class="admin-header">
+        <div>
+          <h3 style="font-size:1.25rem; font-weight:800;" data-i18n="adminTitle">پنل مدیریت و استودیو دوبله (CMS)</h3>
+          <span style="font-size:0.8rem; color:var(--text-dim);" data-i18n="adminSubtitle">مدیریت سفارش‌ها، پروژه‌های فعال، نمونه‌کارها و کتابخانه صداها</span>
+        </div>
+        <button id="closeAdminBtn" class="btn btn-secondary" data-i18n="btnCloseAdmin">
+          ✕ بستن پنل
+        </button>
+      </div>
+
+      <!-- Admin Tabs Navigation -->
+      <div class="admin-tabs-nav">
+        <button class="admin-tab-btn active" data-admin-tab="projects" data-i18n="tabProjects">پروژه‌ها و جاب‌های دوبله</button>
+        <button class="admin-tab-btn" data-admin-tab="inquiries" data-i18n="tabInquiries">پیام‌ها و سفارش‌های دریافتی</button>
+        <button class="admin-tab-btn" data-admin-tab="analytics" data-i18n="tabAnalytics">آمار و کارکرد سیستم</button>
+      </div>
+
+      <!-- Admin Body Content -->
+      <div class="admin-body">
+        <!-- Tab 1: Projects / Jobs Queue -->
+        <div id="admin-tab-projects" class="admin-tab-content">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th data-i18n="colJobId">شناسه پروژه</th>
+                <th data-i18n="colJobTitle">عنوان ویدیو</th>
+                <th data-i18n="colJobLang">مسیر زبان</th>
+                <th data-i18n="colJobStatus">وضعیت</th>
+                <th data-i18n="colJobDate">تاریخ</th>
+                <th data-i18n="colJobActions">عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="adminJobsTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab 2: Inquiries & Orders Inbox -->
+        <div id="admin-tab-inquiries" class="admin-tab-content" style="display:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>نام و سازمان</th>
+                <th>اطلاعات تماس</th>
+                <th>توضیحات و لینک</th>
+                <th>تاریخ</th>
+                <th>وضعیت</th>
+              </tr>
+            </thead>
+            <tbody id="adminInquiriesTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab 3: System Analytics -->
+        <div id="admin-tab-analytics" class="admin-tab-content" style="display:none;">
+          <div class="admin-stats-grid">
+            <div class="stat-metric-card">
+              <span class="stat-val" id="adminStatTotalJobs">+۲,۵۰۴</span>
+              <span style="font-size:0.85rem; color:var(--text-dim);" data-i18n="adminTotalJobs">کل ویدیوهای پردازش شده</span>
+            </div>
+            <div class="stat-metric-card">
+              <span class="stat-val" style="color:var(--accent-cyan);">۳۸,۴۵۰</span>
+              <span style="font-size:0.85rem; color:var(--text-dim);" data-i18n="adminTotalMinutes">دقیقه دوبله شده</span>
+            </div>
+            <div class="stat-metric-card">
+              <span class="stat-val" style="color:var(--accent-emerald);">۹۹.۴٪</span>
+              <span style="font-size:0.85rem; color:var(--text-dim);">نرخ رضایت و دقت لب‌سینک</span>
+            </div>
+            <div class="stat-metric-card">
+              <span class="stat-val" style="color:var(--accent-pink);">۱.۲ TB</span>
+              <span style="font-size:0.85rem; color:var(--text-dim);" data-i18n="adminStorageUsed">فضای ذخیره‌سازی ابری</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="brand-logo" style="margin-bottom:1rem;">
+            <div class="brand-icon-box">
+              <div class="soundwave-anim">
+                <span class="soundwave-bar"></span>
+                <span class="soundwave-bar"></span>
+                <span class="soundwave-bar"></span>
+              </div>
+            </div>
+            <span data-i18n="brandName">اکوداب استودیو</span>
+          </div>
+          <p style="color:var(--text-dim); max-width:400px; font-size:0.9rem;" data-i18n="footerDesc">
+            پلتفرم شخصی و استودیوی اختصاصی دوبله هوشمند با فناوری‌های نسل نوین هوش مصنوعی.
+          </p>
+        </div>
+
+        <div>
+          <h4 style="font-size:1rem; margin-bottom:1rem;" data-i18n="footerLinks">دسترسی سریع</h4>
+          <ul style="list-style:none; display:flex; flex-direction:column; gap:0.5rem; font-size:0.9rem;">
+            <li><a href="#studio" style="color:var(--text-muted); text-decoration:none;">استودیو دوبله</a></li>
+            <li><a href="#voicelab" style="color:var(--text-muted); text-decoration:none;">آزمایشگاه صدا</a></li>
+            <li><a href="#showcase" style="color:var(--text-muted); text-decoration:none;">نمونه‌کارها</a></li>
+            <li><a href="#pricing" style="color:var(--text-muted); text-decoration:none;">تعرفه‌ها و خدمات</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 style="font-size:1rem; margin-bottom:1rem;" data-i18n="footerContact">ارتباط مستقیم</h4>
+          <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.8;">
+            تلگرام / واتساپ پشتیبانی استودیو<br>
+            ایمیل: <span style="font-family:var(--font-mono); color:var(--accent-cyan);">contact@echodub.studio</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span data-i18n="footerRights">تمامی حقوق محفوظ است © ۲۰۲۶ - استودیوی دوبلاژ هوش مصنوعی</span>
+        <span style="color:var(--accent-cyan);">EchoDub AI Platform</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/i18n.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/dubbing-engine.js"></script>
+  <script src="js/voice-lab.js"></script>
+  <script src="js/admin-cms.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

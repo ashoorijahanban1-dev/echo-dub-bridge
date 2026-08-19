@@ -1,0 +1,26 @@
+services:
+  echodub-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: echodub_bridge
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - US_WORKER_API_URL=${US_WORKER_API_URL:-http://IP_SERVER_AMERICA:8000}
+      - WORDPRESS_SITE_URL=${WORDPRESS_SITE_URL:-https://downloadly.ir}
+      - WORDPRESS_REST_USER=${WORDPRESS_REST_USER}
+      - WORDPRESS_APP_PASSWORD=${WORDPRESS_APP_PASSWORD}
+      - PORT=8080
+    volumes:
+      - echodub_cache:/app/cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  echodub_cache:
+    driver: local
