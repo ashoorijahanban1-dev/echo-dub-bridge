@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     WORDPRESS_REST_USER: str = ""
     WORDPRESS_APP_PASSWORD: str = ""
     
+    # Autonomous Watcher Agent Settings
+    AUTO_WATCHER_ENABLED: bool = True
+    WATCHER_CHECK_INTERVAL_SECONDS: int = 900 # 15 minutes
+    AUTO_DUB_NEW_COURSES: bool = True
+    
     # Security
     ADMIN_API_KEY: str = "change_me_in_env"
 

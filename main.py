@@ -1,12 +1,14 @@
 """
 EchoDub Bridge - Main FastAPI Server (Iran Hub)
-Hosts the Video Stream Proxy, Downloadly Course Unpacker, WordPress Integration API, and Frontend Studio.
+Hosts the Video Stream Proxy, Downloadly Course Unpacker, Autonomous Watcher Agent, and WordPress API.
 """
 
 import os
+import asyncio
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +20,7 @@ from core.stream_proxy import VideoStreamProxy
 from core.dispatcher import JobDispatcher
 from core.wordpress_bridge import WordPressBridge
 from core.course_unpacker import CourseUnpacker
+from core.watcher import DownloadlyWatcherAgent
 
 # Configure Logging
 logging.basicConfig(
@@ -26,10 +29,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger("EchoDub.Bridge")
 
+# Lifespan manager for FastAPI (starts background watcher agent)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if settings.AUTO_WATCHER_ENABLED:
+        logger.info("Starting Downloadly Watcher Agent in background...")
+        asyncio.create_task(DownloadlyWatcherAgent.start_background_loop(
+            interval_seconds=settings.WATCHER_CHECK_INTERVAL_SECONDS,
+            auto_dub=settings.AUTO_DUB_NEW_COURSES
+        ))
+    yield
+
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Domestic Video Stream Proxy & Downloadly.ir Course Unpacker Gateway",
-    version="1.0.0"
+    description="Domestic Video Stream Proxy, Course Unpacker & Autonomous Watcher Gateway",
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -56,9 +71,18 @@ class ManualEmbedRequest(BaseModel):
     title: str
     telegram_link: Optional[str] = None
 
+# ==============================================================================
+# Endpoints
+# ==============================================================================
+
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "ok", "app": settings.APP_NAME, "cache_dir": str(settings.CACHE_DIR)}
+    return {
+        "status": "ok",
+        "app": settings.APP_NAME,
+        "watcher_enabled": settings.AUTO_WATCHER_ENABLED,
+        "cache_dir": str(settings.CACHE_DIR)
+    }
 
 @app.get("/stream/{video_id}", tags=["Streaming"])
 async def stream_video(video_id: str, request: Request):
@@ -67,6 +91,14 @@ async def stream_video(video_id: str, request: Request):
     """
     remote_source = f"{settings.US_WORKER_API_URL.rstrip('/')}/storage/output/{video_id}.mp4"
     return await VideoStreamProxy.get_video_stream(video_id, remote_source, request)
+
+@app.post("/api/v1/bridge/watcher/check-now", tags=["Watcher Agent"])
+async def trigger_watcher_check(background_tasks: BackgroundTasks):
+    """
+    Forces an immediate check for new courses on Downloadly.ir without waiting for the 15-minute timer.
+    """
+    background_tasks.add_task(DownloadlyWatcherAgent.run_watcher_cycle, auto_dub=settings.AUTO_DUB_NEW_COURSES)
+    return {"status": "TRIGGERED", "message": "Downloadly Watcher check triggered in background."}
 
 @app.post("/api/v1/bridge/course/process", tags=["Course Pipeline"])
 async def process_full_downloadly_course(req: FullCourseRequest, background_tasks: BackgroundTasks):
