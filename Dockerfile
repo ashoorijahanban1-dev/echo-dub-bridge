@@ -5,6 +5,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    p7zip-full \
+    unrar-free \
+    aria2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -15,7 +18,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . .
 
-RUN mkdir -p /app/cache /app/static
+RUN mkdir -p /app/cache /app/static /app/temp_courses /app/temp_downloads
 
 EXPOSE 8080
 

@@ -1,7 +1,7 @@
 """
 EchoDub Bridge - Smart Domestic Fetcher & US Dispatcher
 Downloads video from Downloadly.ir using Iranian IP (bypassing Geo-IP block),
-then transfers the video directly to the US Worker for AI dubbing.
+or reads extracted local files, then transfers the video directly to the US Worker for AI dubbing.
 """
 
 import os
@@ -26,33 +26,40 @@ class JobDispatcher:
         post_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        1. Downloads video from Downloadly.ir using domestic Iran network (Geo-IP permitted).
+        1. Downloads video from Downloadly.ir using domestic Iran network (or uses local extracted file).
         2. Uploads the video file directly to US Worker /api/v1/dub/upload.
         3. Deletes temporary downloaded file on Iran server to preserve disk space.
         4. Coordinates automatic WordPress publishing.
         """
-        temp_download_dir = settings.BASE_DIR / "temp_downloads"
-        os.makedirs(temp_download_dir, exist_ok=True)
+        is_local_file = video_url.startswith("file://")
         
-        raw_name = video_url.split("?")[0].split("/")[-1]
-        filename = raw_name if raw_name.endswith(('.mp4', '.mkv', '.webm', '.mov')) else f"course_{int(asyncio.get_event_loop().time())}.mp4"
-        local_video_path = temp_download_dir / filename
+        if is_local_file:
+            local_video_path = Path(video_url.replace("file://", ""))
+            filename = local_video_path.name
+        else:
+            temp_download_dir = settings.BASE_DIR / "temp_downloads"
+            os.makedirs(temp_download_dir, exist_ok=True)
+            
+            raw_name = video_url.split("?")[0].split("/")[-1]
+            filename = raw_name if raw_name.endswith(('.mp4', '.mkv', '.webm', '.mov')) else f"course_{int(asyncio.get_event_loop().time())}.mp4"
+            local_video_path = temp_download_dir / filename
 
-        logger.info(f"Downloading from Downloadly.ir with domestic Iran IP: {video_url}")
+            logger.info(f"Downloading from Downloadly.ir with domestic Iran IP: {video_url}")
 
-        # Step 1: Download from downloadly.ir
-        timeout = aiohttp.ClientTimeout(total=1800)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(video_url) as resp:
-                if resp.status != 200:
-                    logger.error(f"Download from Downloadly.ir failed. HTTP {resp.status}")
-                    return {"success": False, "error": f"Downloadly HTTP error: {resp.status}"}
-                
-                async with aiofiles.open(local_video_path, "wb") as f:
-                    while chunk := await resp.content.read(1024 * 1024):
-                        await f.write(chunk)
+            # Step 1: Download from downloadly.ir
+            timeout = aiohttp.ClientTimeout(total=1800)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(video_url) as resp:
+                    if resp.status != 200:
+                        logger.error(f"Download from Downloadly.ir failed. HTTP {resp.status}")
+                        return {"success": False, "error": f"Downloadly HTTP error: {resp.status}"}
+                    
+                    async with aiofiles.open(local_video_path, "wb") as f:
+                        while chunk := await resp.content.read(1024 * 1024):
+                            await f.write(chunk)
 
-        logger.info(f"Download complete ({local_video_path.stat().st_size / (1024*1024):.2f} MB). Transferring to US Worker...")
+        file_size_mb = local_video_path.stat().st_size / (1024 * 1024)
+        logger.info(f"Ready to transfer ({file_size_mb:.2f} MB) to US Worker...")
 
         # Step 2: Upload to US Worker endpoint /api/v1/dub/upload
         us_upload_endpoint = f"{settings.US_WORKER_API_URL.rstrip('/')}/api/v1/dub/upload"
@@ -80,11 +87,12 @@ class JobDispatcher:
                     job_id = resp_data.get("job_id")
                     logger.info(f"Video transferred to US Worker! Job ID: {job_id}")
 
-                    # Step 3: Remove temporary file on Iran server
-                    try:
-                        os.remove(local_video_path)
-                    except Exception:
-                        pass
+                    # Step 3: Remove temporary download file (if it was downloaded, not extracted)
+                    if not is_local_file:
+                        try:
+                            os.remove(local_video_path)
+                        except Exception:
+                            pass
 
                     # Step 4: Schedule background polling & WordPress updater
                     if post_id and job_id:
@@ -94,7 +102,7 @@ class JobDispatcher:
 
         except Exception as e:
             logger.error(f"Error transferring video to US Worker: {e}")
-            if local_video_path.exists():
+            if not is_local_file and local_video_path.exists():
                 os.remove(local_video_path)
             return {"success": False, "error": str(e)}
 

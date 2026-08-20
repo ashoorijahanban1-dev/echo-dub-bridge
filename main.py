@@ -1,6 +1,6 @@
 """
 EchoDub Bridge - Main FastAPI Server (Iran Hub)
-Hosts the Video Stream Proxy, WordPress Integration API, and Frontend Studio.
+Hosts the Video Stream Proxy, Downloadly Course Unpacker, WordPress Integration API, and Frontend Studio.
 """
 
 import os
@@ -17,6 +17,7 @@ from config import settings
 from core.stream_proxy import VideoStreamProxy
 from core.dispatcher import JobDispatcher
 from core.wordpress_bridge import WordPressBridge
+from core.course_unpacker import CourseUnpacker
 
 # Configure Logging
 logging.basicConfig(
@@ -27,7 +28,7 @@ logger = logging.getLogger("EchoDub.Bridge")
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Domestic Video Stream Proxy & Downloadly.ir Integration Gateway",
+    description="Domestic Video Stream Proxy & Downloadly.ir Course Unpacker Gateway",
     version="1.0.0"
 )
 
@@ -44,6 +45,10 @@ class CourseDispatchRequest(BaseModel):
     title: str
     voice_gender: Optional[str] = "male"
     wordpress_post_id: Optional[int] = None
+
+class FullCourseRequest(BaseModel):
+    course_url: str
+    voice_gender: Optional[str] = "male"
 
 class ManualEmbedRequest(BaseModel):
     post_id: int
@@ -62,6 +67,19 @@ async def stream_video(video_id: str, request: Request):
     """
     remote_source = f"{settings.US_WORKER_API_URL.rstrip('/')}/storage/output/{video_id}.mp4"
     return await VideoStreamProxy.get_video_stream(video_id, remote_source, request)
+
+@app.post("/api/v1/bridge/course/process", tags=["Course Pipeline"])
+async def process_full_downloadly_course(req: FullCourseRequest, background_tasks: BackgroundTasks):
+    """
+    Takes a Downloadly course URL, downloads all multi-part RAR archives,
+    extracts them with password, and dubs every lesson video sequentially!
+    """
+    background_tasks.add_task(CourseUnpacker.process_full_course, req.course_url, req.voice_gender)
+    return {
+        "status": "QUEUED",
+        "message": f"Full course pipeline started for: {req.course_url}. Downloading parts & extracting...",
+        "course_url": req.course_url
+    }
 
 @app.post("/api/v1/bridge/dispatch", tags=["Dispatch"])
 async def dispatch_course_video(req: CourseDispatchRequest):
