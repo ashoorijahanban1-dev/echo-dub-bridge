@@ -1,8 +1,3 @@
-/**
- * EchoDub Command Center - Dashboard Controller
- * Real-time telemetry, job submission, watcher control, and domestic stream testing.
- */
-
 const Dashboard = {
   statusInterval: null,
   logsInterval: null,
@@ -163,4 +158,7 @@ const Dashboard = {
   }
 };
 
+window.Dashboard = Dashboard;
+
 document.addEventListener('DOMContentLoaded', () => Dashboard.init());
+
