@@ -1,6 +1,9 @@
 # Multi-stage Dockerfile for EchoDub Web (Next.js 16 LTS)
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
+
+# Install openssl for Prisma
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY package*.json ./
@@ -13,8 +16,10 @@ RUN npx prisma generate
 RUN npm run build
 
 # Production Runner
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
+
+RUN apt-get update -y && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -28,4 +33,5 @@ COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+# Run prisma db push and seed on startup if needed, then start Next.js
+CMD ["sh", "-c", "npx prisma db push && node prisma/seed.js && npm run start"]
