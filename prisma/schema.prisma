@@ -1,0 +1,72 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Course {
+  id              String      @id @default(uuid())
+  slug            String      @unique
+  titleFa         String
+  titleEn         String
+  descriptionFa   String
+  instructor      String
+  instructorRole  String?     @default("Tech Lead & Educator")
+  category        String      @default("برنامه‌نویسی و DevOps")
+  level           String      @default("متوسط")
+  totalDurationMin Int        @default(0)
+  thumbnailUrl    String      @default("https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=800&auto=format&fit=crop&q=80")
+  badgeText       String?     @default("دوبله اختصاصی AI")
+  rating          Float       @default(4.9)
+  studentsCount   Int         @default(1240)
+  isPublished     Boolean     @default(true)
+  chapters        Chapter[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model Chapter {
+  id          String      @id @default(uuid())
+  courseId    String
+  course      Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  titleFa     String
+  orderIndex  Int         @default(1)
+  episodes    Episode[]
+  createdAt   DateTime    @default(now())
+}
+
+model Episode {
+  id                  String      @id @default(uuid())
+  chapterId           String
+  chapter             Chapter     @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  titleFa             String
+  titleEn             String
+  episodeNumber       Int         @default(1)
+  durationSeconds     Float       @default(0.0)
+  streamUrl           String      // Primary proxy stream URL
+  originalVideoUrl    String?
+  dubbedAudioUrl      String?     // Persian Dubbed Audio Track
+  originalAudioUrl    String?     // English Original Audio Track
+  subtitleFaUrl       String?     // Persian .vtt subtitle
+  subtitleEnUrl       String?     // English .vtt subtitle
+  telegramFileId      String?
+  telegramMessageId   Int?
+  isFreePreview       Boolean     @default(false)
+  createdAt           DateTime    @default(now())
+}
+
+model DubbingJob {
+  id              String      @id
+  videoUrl        String
+  title           String?
+  status          String      @default("QUEUED") // QUEUED, PROCESSING, COMPLETED, FAILED
+  progress        Int         @default(0)
+  stage           String      @default("در صف انتظار...")
+  resultData      String?     // JSON string
+  errorMessage    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
