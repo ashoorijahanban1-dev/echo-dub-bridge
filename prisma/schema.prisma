@@ -145,3 +145,30 @@ model SystemSetting {
   isSecret      Boolean     @default(false)
   updatedAt     DateTime    @updatedAt
 }
+
+model Article {
+  id            String      @id @default(uuid())
+  slug          String      @unique
+  title         String
+  excerpt       String
+  content       String      // Markdown or HTML
+  coverImage    String      @default("https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80")
+  category      String      @default("آموزش هوش مصنوعی")
+  author        String      @default("تیم فنی EchoDub")
+  readTimeMin   Int         @default(5)
+  isPublished   Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model SiteBanner {
+  id            String      @id @default(uuid())
+  type          String      @default("PROMO") // HERO, PROMO, TOP_BAR
+  title         String
+  subtitle      String?
+  badgeText     String?
+  linkUrl       String?
+  buttonText    String?
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+}
