@@ -187,8 +187,19 @@ export default function VideoPlayer({
   };
 
   // Keyboard Shortcuts
+  // Anti-Piracy & Anti-Download Protection Hotkeys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Ctrl+S, Ctrl+U, F12, Ctrl+Shift+I (Save / Inspect / Download tools)
+      if (
+        (e.ctrlKey || e.metaKey) && ["s", "u", "p"].includes(e.key.toLowerCase()) ||
+        e.key === "F12" ||
+        (e.ctrlKey && e.shiftKey && ["i", "j", "c"].includes(e.key.toLowerCase()))
+      ) {
+        e.preventDefault();
+        return;
+      }
+
       // Avoid hotkeys when typing in input
       if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) return;
 
@@ -246,15 +257,25 @@ export default function VideoPlayer({
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => isPlaying && setShowControls(false)}
+      onContextMenu={(e) => e.preventDefault()}
       className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl border border-slate-800/80 group select-none"
     >
-      {/* HTML5 Video Element */}
+      {/* Dynamic Anti-Piracy Watermark Overlay */}
+      <div className="absolute top-6 left-6 z-10 pointer-events-none opacity-20 hover:opacity-40 transition-opacity font-mono text-[10px] text-white/70 bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm border border-white/5 flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+        <span>rpim.ir | پخش حفاظت‌شده</span>
+      </div>
+
+      {/* HTML5 Protected Video Element */}
       <video
         ref={videoRef}
         src={streamUrl}
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onContextMenu={(e) => e.preventDefault()}
+        controlsList="nodownload nofullscreen noremoteplayback"
+        disablePictureInPicture
         onEnded={() => {
           setIsPlaying(false);
           if (onNextEpisode) onNextEpisode();
@@ -281,6 +302,7 @@ export default function VideoPlayer({
           />
         )}
       </video>
+
 
       {/* Center Play/Pause Large Overlay Button on Click */}
       {!isPlaying && (

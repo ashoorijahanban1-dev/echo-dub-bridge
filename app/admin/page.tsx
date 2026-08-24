@@ -231,15 +231,35 @@ export default function MissionControlAdminPage() {
   };
 
   // Start Batch Ingestion
-  const handleStartIngestion = () => {
+  const handleStartIngestion = async () => {
+    if (!scrapedData) return;
     setIsIngesting(true);
-    setIngestionStatusMsg("🚀 پروسه دانلود چنداتصاله و دوبله دسته‌ای با موفقیت استارت خورد.");
-    setTimeout(() => {
-      setIsIngesting(false);
-      setIngestionStatusMsg("✅ پارت‌ها روی سرور ایران دانلود و برای دوبله هوش مصنوعی به آمریکا ارسال شدند.");
+    setIngestionStatusMsg("🚀 در حال استارت خط تولید خودکار و اتصال به سرور دانلود ایران...");
+    try {
+      const res = await fetch("/api/admin/auto-ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: scrapedData.url,
+          slug: scrapedData.slug,
+          titleFa: scrapedData.titleFa,
+          titleEn: scrapedData.titleEn,
+          instructor: scrapedData.instructor,
+          rarLinks: scrapedData.rarLinks,
+          voiceGender: ingestVoice
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setIngestionStatusMsg(`🎉 ${data.message} (شناسه دوره: ${data.courseSlug})`);
       fetchCourses();
       fetchAnalytics();
-    }, 3000);
+    } catch (err: any) {
+      setIngestionStatusMsg(`❌ خطا: ${err.message}`);
+    } finally {
+      setIsIngesting(false);
+    }
   };
 
   // Add Glossary Term
