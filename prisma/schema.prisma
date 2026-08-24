@@ -70,3 +70,78 @@ model DubbingJob {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 }
+
+model IngestionBatch {
+  id                String      @id @default(uuid())
+  sourceUrl         String
+  courseTitle       String
+  status            String      @default("QUEUED") // QUEUED, DOWNLOADING, EXTRACTING, DUBBING, COMPLETED, FAILED
+  totalParts        Int         @default(1)
+  totalEpisodes     Int         @default(0)
+  completedEpisodes Int         @default(0)
+  currentStage      String      @default("آماده‌سازی...")
+  voiceGender       String      @default("male")
+  logs              String?     // JSON string
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model User {
+  id              String      @id @default(uuid())
+  email           String      @unique
+  phone           String?
+  name            String
+  passwordHash    String?
+  role            String      @default("USER") // ADMIN, USER
+  isVip           Boolean     @default(false)
+  vipExpiresAt    DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  transactions    Transaction[]
+}
+
+model SubscriptionPlan {
+  id            String        @id @default(uuid())
+  title         String
+  description   String
+  priceToman    Int
+  durationDays  Int           @default(30)
+  badge         String?
+  featuresJson  String        @default("[]")
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId        String?
+  plan          SubscriptionPlan? @relation(fields: [planId], references: [id])
+  amountToman   Int
+  status        String            @default("PENDING") // PENDING, PAID, FAILED
+  authority     String?
+  trackingCode  String?
+  gateway       String            @default("ZarinPal")
+  createdAt     DateTime          @default(now())
+}
+
+model GlossaryTerm {
+  id            String      @id @default(uuid())
+  sourceTerm    String      @unique // e.g. "Kubernetes"
+  targetTerm    String      // e.g. "کوبرنتیز (دست‌نخورده)"
+  category      String      @default("IT / DevOps")
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+}
+
+model SystemSetting {
+  id            String      @id @default(uuid())
+  key           String      @unique // e.g. "GEMINI_API_KEY", "TELEGRAM_BOT_TOKEN"
+  value         String
+  group         String      @default("GENERAL") // GENERAL, AI, TELEGRAM, SECURITY
+  description   String?
+  isSecret      Boolean     @default(false)
+  updatedAt     DateTime    @updatedAt
+}
