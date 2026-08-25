@@ -93,7 +93,7 @@ export async function PATCH(request: Request) {
                 titleEn: "01 - Introduction and Core Concepts",
                 episodeNumber: 1,
                 durationSeconds: 480,
-                streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                streamUrl: "/sample-video.mp4",
                 isFreePreview: true
               },
               {
@@ -102,7 +102,7 @@ export async function PATCH(request: Request) {
                 titleEn: "02 - Setup and First Hands-On Project",
                 episodeNumber: 2,
                 durationSeconds: 620,
-                streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                streamUrl: "/sample-video.mp4",
                 isFreePreview: true
               }
             ]
@@ -124,7 +124,7 @@ export async function PATCH(request: Request) {
                 titleEn: "03 - Advanced Architecture & Enterprise Challenges",
                 episodeNumber: 3,
                 durationSeconds: 780,
-                streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                streamUrl: "/sample-video.mp4",
                 isFreePreview: false
               },
               {
@@ -133,7 +133,7 @@ export async function PATCH(request: Request) {
                 titleEn: "04 - Security, Optimization & Production Deployment",
                 episodeNumber: 4,
                 durationSeconds: 910,
-                streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+                streamUrl: "/sample-video.mp4",
                 isFreePreview: false
               }
             ]

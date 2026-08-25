@@ -58,7 +58,7 @@ export default async function WatchEpisodePage({
             titleEn: "01 - Introduction and Learning Roadmap",
             episodeNumber: 1,
             durationSeconds: 480,
-            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+            streamUrl: "/sample-video.mp4",
             isFreePreview: true,
           },
           {
@@ -67,7 +67,7 @@ export default async function WatchEpisodePage({
             titleEn: "02 - Environment Setup & First Hands-on Project",
             episodeNumber: 2,
             durationSeconds: 650,
-            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+            streamUrl: "/sample-video.mp4",
             isFreePreview: true,
           },
           {
@@ -76,7 +76,7 @@ export default async function WatchEpisodePage({
             titleEn: "03 - Core Architecture and Deep Dive",
             episodeNumber: 3,
             durationSeconds: 780,
-            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            streamUrl: "/sample-video.mp4",
             isFreePreview: false,
           }
         ],
@@ -91,7 +91,7 @@ export default async function WatchEpisodePage({
             titleEn: "04 - Data Flow & Real-World Optimization",
             episodeNumber: 4,
             durationSeconds: 840,
-            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+            streamUrl: "/sample-video.mp4",
             isFreePreview: false,
           },
           {
@@ -100,7 +100,7 @@ export default async function WatchEpisodePage({
             titleEn: "05 - Cloud Deployment & Security",
             episodeNumber: 5,
             durationSeconds: 920,
-            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+            streamUrl: "/sample-video.mp4",
             isFreePreview: false,
           }
         ]

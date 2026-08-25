@@ -62,8 +62,32 @@ export default function VideoPlayer({
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
-
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [currentSrc, setCurrentSrc] = useState<string>(streamUrl || "/sample-video.mp4");
+  const [hasStreamError, setHasStreamError] = useState(false);
+
+  useEffect(() => {
+    // If streamUrl is empty, relative API, or blocked Google storage, use domestic sample
+    if (!streamUrl || streamUrl.includes("commondatastorage.googleapis.com")) {
+      setCurrentSrc("/sample-video.mp4");
+    } else {
+      setCurrentSrc(streamUrl);
+    }
+    setHasStreamError(false);
+  }, [streamUrl, episodeId]);
+
+  const handleVideoError = () => {
+    console.warn("Video stream load error from:", currentSrc, "- switching to domestic fallback stream");
+    if (currentSrc !== "/sample-video.mp4") {
+      setCurrentSrc("/sample-video.mp4");
+      setHasStreamError(true);
+      if (videoRef.current) {
+        videoRef.current.load();
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  };
 
   // 1. Resume Playback from LocalStorage
   useEffect(() => {
@@ -269,7 +293,8 @@ export default function VideoPlayer({
       {/* HTML5 Protected Video Element */}
       <video
         ref={videoRef}
-        src={streamUrl}
+        src={currentSrc}
+        onError={handleVideoError}
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
@@ -281,6 +306,7 @@ export default function VideoPlayer({
           if (onNextEpisode) onNextEpisode();
         }}
         playsInline
+        preload="metadata"
         className="w-full h-full object-contain cursor-pointer"
       >
         {subtitleFaUrl && (

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const FALLBACK_STREAM = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+const FALLBACK_STREAM = "/sample-video.mp4";
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +22,7 @@ export async function GET(
         }
       });
 
-      if (episode && episode.streamUrl && (episode.streamUrl.startsWith("http://") || episode.streamUrl.startsWith("https://"))) {
+      if (episode && episode.streamUrl && episode.streamUrl.startsWith("http") && !episode.streamUrl.includes("commondatastorage.googleapis.com")) {
         targetUrl = episode.streamUrl;
       }
     } catch {
@@ -33,8 +33,8 @@ export async function GET(
       targetUrl = FALLBACK_STREAM;
     }
 
-    return NextResponse.redirect(targetUrl, 307);
+    return NextResponse.redirect(new URL(targetUrl, request.url), 307);
   } catch (error: any) {
-    return NextResponse.redirect(FALLBACK_STREAM, 307);
+    return NextResponse.redirect(new URL(FALLBACK_STREAM, request.url), 307);
   }
 }
