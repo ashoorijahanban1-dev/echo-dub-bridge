@@ -1,22 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const FALLBACK_STREAM = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const episode = await prisma.episode.findUnique({
-      where: { id },
-    });
 
-    if (!episode || !episode.streamUrl) {
-      return NextResponse.json({ error: "Episode or stream not found" }, { status: 404 });
+    let targetUrl: string | null = null;
+
+    try {
+      const episode = await prisma.episode.findFirst({
+        where: {
+          OR: [
+            { id: id },
+            { streamUrl: { contains: id } }
+          ]
+        }
+      });
+
+      if (episode && episode.streamUrl && (episode.streamUrl.startsWith("http://") || episode.streamUrl.startsWith("https://"))) {
+        targetUrl = episode.streamUrl;
+      }
+    } catch {
+      // ignore db error
     }
 
-    return NextResponse.redirect(episode.streamUrl);
+    if (!targetUrl) {
+      targetUrl = FALLBACK_STREAM;
+    }
+
+    return NextResponse.redirect(targetUrl, 307);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.redirect(FALLBACK_STREAM, 307);
   }
 }

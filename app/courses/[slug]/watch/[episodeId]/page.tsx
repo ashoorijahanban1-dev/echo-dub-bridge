@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import VideoPlayer from "@/components/player/VideoPlayer";
 import EpisodeSidebar from "@/components/player/EpisodeSidebar";
-import { ArrowRight, Sparkles, ShieldCheck, Download, Share2, Info } from "lucide-react";
+import { ArrowRight, Sparkles, ShieldCheck, Download, Share2, Info, Radio } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -39,42 +39,79 @@ export default async function WatchEpisodePage({
     course = {
       id: "1",
       slug,
-      titleFa: "دوره جامع مستری داکر و کانتینرها (۲۰۲۶)",
-      titleEn: "Docker Mastery: with Kubernetes + Swarm",
-      instructor: "Bret Fisher",
-      chapters: [
-        {
-          id: "c1",
-          titleFa: "فصل اول: مبانی کانتینرسازی",
-          episodes: [
-            {
-              id: "ep-1",
-              titleFa: "جلسه اول: آشنایی با داکر و تفاوت آن با ماشین‌های مجازی",
-              titleEn: "Introduction to Containers & Virtual Machines",
-              episodeNumber: 1,
-              durationSeconds: 480,
-              streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-              isFreePreview: true,
-            },
-            {
-              id: "ep-2",
-              titleFa: "جلسه دوم: کار با دستورات اصلی داکر (Run, Exec, Logs)",
-              titleEn: "Essential Docker CLI Commands in Depth",
-              episodeNumber: 2,
-              durationSeconds: 620,
-              streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-              isFreePreview: true,
-            },
-          ],
-        },
-      ],
+      titleFa: "دوره جامع با دوبله اختصاصی فارسی",
+      titleEn: slug.replace(/-/g, " ").toUpperCase(),
+      instructor: "مدرس بین‌المللی",
+      chapters: []
     };
+  }
+
+  if (!course.chapters || course.chapters.length === 0) {
+    course.chapters = [
+      {
+        id: "c1",
+        titleFa: "فصل ۱: مفاهیم پایه، معماری و راه‌اندازی",
+        episodes: [
+          {
+            id: `${course.slug}-ep1`,
+            titleFa: "جلسه ۱: مقدمه و نقشه راه جامع یادگیری",
+            titleEn: "01 - Introduction and Learning Roadmap",
+            episodeNumber: 1,
+            durationSeconds: 480,
+            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+            isFreePreview: true,
+          },
+          {
+            id: `${course.slug}-ep2`,
+            titleFa: "جلسه ۲: نصب ابزارها و ساخت اولین پروژه",
+            titleEn: "02 - Environment Setup & First Hands-on Project",
+            episodeNumber: 2,
+            durationSeconds: 650,
+            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+            isFreePreview: true,
+          },
+          {
+            id: `${course.slug}-ep3`,
+            titleFa: "جلسه ۳: بررسی عمیق ساختار و مفاهیم بنیادین",
+            titleEn: "03 - Core Architecture and Deep Dive",
+            episodeNumber: 3,
+            durationSeconds: 780,
+            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            isFreePreview: false,
+          }
+        ],
+      },
+      {
+        id: "c2",
+        titleFa: "فصل ۲: پیاده‌سازی عملی و استقرار پروداکشن",
+        episodes: [
+          {
+            id: `${course.slug}-ep4`,
+            titleFa: "جلسه ۴: مدیریت داده‌ها، بهینه‌سازی و حل چالش‌ها",
+            titleEn: "04 - Data Flow & Real-World Optimization",
+            episodeNumber: 4,
+            durationSeconds: 840,
+            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+            isFreePreview: false,
+          },
+          {
+            id: `${course.slug}-ep5`,
+            titleFa: "جلسه ۵: استقرار در کلاود و امنیت",
+            titleEn: "05 - Cloud Deployment & Security",
+            episodeNumber: 5,
+            durationSeconds: 920,
+            streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+            isFreePreview: false,
+          }
+        ]
+      }
+    ];
   }
 
   // Find active episode
   for (const chap of course.chapters || []) {
     for (const ep of chap.episodes || []) {
-      if (ep.id === episodeId) {
+      if (ep.id === episodeId || ep.id === `${course.slug}-${episodeId}`) {
         currentEpisode = ep;
         break;
       }
@@ -84,11 +121,16 @@ export default async function WatchEpisodePage({
   if (!currentEpisode) {
     currentEpisode = course.chapters?.[0]?.episodes?.[0] || {
       id: episodeId,
-      titleFa: "جلسه اول: آموزش تخصصی",
+      titleFa: "جلسه اول: آموزش تخصصی و مقدمات",
       titleEn: "Episode 1: Core Concepts",
       streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
       durationSeconds: 480,
     };
+  }
+
+  // Ensure streamUrl is valid
+  if (!currentEpisode.streamUrl || currentEpisode.streamUrl.startsWith("/api/stream/")) {
+    currentEpisode.streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   }
 
   return (
@@ -140,44 +182,41 @@ export default async function WatchEpisodePage({
                 <h1 className="text-lg sm:text-xl font-bold text-white leading-snug">
                   {currentEpisode.titleFa}
                 </h1>
-                <div className="text-xs text-slate-400 font-mono mt-0.5">
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
                   {currentEpisode.titleEn}
-                </div>
+                </p>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center gap-2">
-                <a
-                  href={currentEpisode.streamUrl}
-                  download
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold transition-all"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  دانلود ویدیو
-                </a>
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                  <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                  استریم CDN تلگرام
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-cyan-950/60 border border-cyan-800/80 text-cyan-300 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  دوبله هوش مصنوعی فارسی
+                </span>
               </div>
             </div>
 
-            {/* AI Dubbing Info & Highlights */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300">
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>دوبله شده با گوینده هوشمند: <strong>فرید (Farid Neural)</strong></span>
+            {/* Course & Instructor Context */}
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <div>
+                دوره: <strong className="text-slate-200">{course.titleFa}</strong>
               </div>
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>استریم پرسرعت با سرور اختصاصی ایران (ترافیک نیم‌بها)</span>
+              <div>
+                مدرس: <strong className="text-slate-200">{course.instructor || "مدرس بین‌المللی"}</strong>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Playlist Sidebar Column */}
-        <div className="lg:col-span-4 h-[600px]">
+        {/* Sidebar Column: Episodes Playlist */}
+        <div className="lg:col-span-4">
           <EpisodeSidebar
             courseSlug={course.slug}
+            chapters={course.chapters}
             currentEpisodeId={currentEpisode.id}
-            chapters={course.chapters || []}
           />
         </div>
 

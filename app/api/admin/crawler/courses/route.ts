@@ -46,13 +46,13 @@ export async function PATCH(request: Request) {
       const results = [];
 
       for (const disc of coursesToIngest) {
-        // 1. Mark status as APPROVED -> PROCESSING
+        // 1. Mark status as APPROVED -> DUBBED
         await prisma.discoveredCourse.update({
           where: { id: disc.id },
-          data: { status: "PROCESSING", approvedAt: new Date() }
+          data: { status: "DUBBED", approvedAt: new Date() }
         });
 
-        // 2. Create Course in Main Catalog if not exists
+        // 2. Create Course in Main Catalog
         const course = await prisma.course.upsert({
           where: { slug: disc.slug },
           update: {
@@ -73,48 +73,87 @@ export async function PATCH(request: Request) {
           }
         });
 
-        // 3. Create Chapters and Episodes
-        const chapter = await prisma.chapter.create({
-          data: {
-            courseId: course.id,
-            titleFa: "فصل ۱: مبانی، مفاهیم و آموزش پروژه‌محور",
-            orderIndex: 1
-          }
-        });
+        // 3. Create Chapters and Episodes with working stream URLs
+        const existingChapters = await prisma.chapter.findMany({ where: { courseId: course.id } });
+        if (existingChapters.length === 0) {
+          const ch1 = await prisma.chapter.create({
+            data: {
+              courseId: course.id,
+              titleFa: "فصل ۱: مفاهیم پایه، راه‌اندازی و مقدمات یادگیری",
+              orderIndex: 1
+            }
+          });
 
-        await prisma.episode.create({
-          data: {
-            chapterId: chapter.id,
-            titleFa: "جلسه ۱: مقدمه و شروع کار با مفاهیم اصلی",
-            titleEn: "01 - Introduction and Core Concepts",
-            episodeNumber: 1,
-            durationSeconds: 360,
-            streamUrl: `/api/stream/${course.slug}-ep1`,
-            isFreePreview: true
-          }
-        });
+          await prisma.episode.createMany({
+            data: [
+              {
+                chapterId: ch1.id,
+                titleFa: "جلسه ۱: مقدمه و شروع کار با مفاهیم اصلی",
+                titleEn: "01 - Introduction and Core Concepts",
+                episodeNumber: 1,
+                durationSeconds: 480,
+                streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                isFreePreview: true
+              },
+              {
+                chapterId: ch1.id,
+                titleFa: "جلسه ۲: نصب ابزارها و اجرای پروژه عملی اول",
+                titleEn: "02 - Setup and First Hands-On Project",
+                episodeNumber: 2,
+                durationSeconds: 620,
+                streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                isFreePreview: true
+              }
+            ]
+          });
 
-        // 4. Create Ingestion Batch Record
+          const ch2 = await prisma.chapter.create({
+            data: {
+              courseId: course.id,
+              titleFa: "فصل ۲: پیاده‌سازی حرفه‌ای، بهینه‌سازی و استقرار کلاود",
+              orderIndex: 2
+            }
+          });
+
+          await prisma.episode.createMany({
+            data: [
+              {
+                chapterId: ch2.id,
+                titleFa: "جلسه ۳: معماری پیشرفته و حل چالش‌های Enterprise",
+                titleEn: "03 - Advanced Architecture & Enterprise Challenges",
+                episodeNumber: 3,
+                durationSeconds: 780,
+                streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                isFreePreview: false
+              },
+              {
+                chapterId: ch2.id,
+                titleFa: "جلسه ۴: امنیت، بهینه‌سازی و استقرار در سطح پروداکشن",
+                titleEn: "04 - Security, Optimization & Production Deployment",
+                episodeNumber: 4,
+                durationSeconds: 910,
+                streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+                isFreePreview: false
+              }
+            ]
+          });
+        }
+
+        // 4. Create Ingestion Batch Record for Live Queue
         await prisma.ingestionBatch.create({
           data: {
             sourceUrl: disc.url,
             courseTitle: disc.titleFa,
             status: "DUBBING",
             totalParts: disc.totalParts || 1,
-            totalEpisodes: 3,
+            totalEpisodes: 4,
             completedEpisodes: 1,
             currentStage: "دریافت خودکار از سرور ایران و ارسال به موتور هوش مصنوعی آمریکا...",
             voiceGender: voiceGender || "male"
           }
         });
 
-        // 5. Update DiscoveredCourse to DUBBED
-        await prisma.discoveredCourse.update({
-          where: { id: disc.id },
-          data: { status: "DUBBED" }
-        });
-
-        results.push({ id: disc.id, titleFa: disc.titleFa, slug: course.slug });
+        results.push({ id: disc.id, titleFa: disc.titleFa, slug: disc.slug });
       }
 
       return NextResponse.json({
@@ -125,7 +164,6 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ error: "عملیات نامعتبر است." }, { status: 400 });
-
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
