@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchDownloadlyPage, parseCoursesFromHtml } from "@/lib/downloadly-fetcher";
+import { startDubbingPipeline } from "@/lib/pipeline-orchestrator";
 
 const SEED_HOT_COURSES = [
   {
@@ -137,46 +138,15 @@ export async function POST(request: Request) {
           }
         });
 
-        // If autoApprove is active and not dubbed, auto create Course
+        // If autoApprove is active and not dubbed, trigger Master Pipeline Orchestrator
         if (autoApprove && !existingCourse) {
-          const course = await prisma.course.upsert({
-            where: { slug: item.slug },
-            update: { isPublished: true },
-            create: {
-              slug: item.slug,
-              titleFa: item.titleFa,
-              titleEn: item.titleEn || item.titleFa,
-              descriptionFa: `دوره آموزشی جامع ${item.titleFa} با دوبله اختصاصی هوش مصنوعی، کیفیت 1080p و دسترسی نامحدود.`,
-              instructor: item.instructor || "مدرس بین‌المللی",
-              category: item.category,
-              thumbnailUrl: item.thumbnailUrl || "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=800&auto=format&fit=crop&q=80",
-              isPublished: true
-            }
-          });
-
-          const ch = await prisma.chapter.create({
-            data: {
-              courseId: course.id,
-              titleFa: "فصل ۱: آموزش تخصصی و سرفصل‌های جامع",
-              orderIndex: 1
-            }
-          });
-
-          await prisma.episode.create({
-            data: {
-              chapterId: ch.id,
-              titleFa: "جلسه ۱: مقدمه و شروع کار با مفاهیم اصلی",
-              titleEn: "01 - Introduction",
-              episodeNumber: 1,
-              durationSeconds: 360,
-              streamUrl: `/api/stream/${course.slug}-ep1`,
-              isFreePreview: true
-            }
-          });
-
-          await prisma.discoveredCourse.update({
-            where: { id: item.id },
-            data: { status: "DUBBED" }
+          const pipelineResult = await startDubbingPipeline({
+            discoveredCourseId: item.id,
+            slug: item.slug,
+            titleFa: item.titleFa,
+            titleEn: item.titleEn,
+            instructor: item.instructor,
+            category: item.category
           });
         }
 

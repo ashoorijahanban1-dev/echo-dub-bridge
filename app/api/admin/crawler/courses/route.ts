@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { publishCourseToTelegram } from "@/lib/telegram-publisher";
+import { startDubbingPipeline } from "@/lib/pipeline-orchestrator";
 
 export async function GET(request: Request) {
   try {
@@ -47,134 +48,29 @@ export async function PATCH(request: Request) {
       const results = [];
 
       for (const disc of coursesToIngest) {
-        // 1. Mark status as APPROVED -> DUBBED
+        // Mark status as PROCESSING
         await prisma.discoveredCourse.update({
           where: { id: disc.id },
-          data: { status: "DUBBED", approvedAt: new Date() }
+          data: { status: "PROCESSING", approvedAt: new Date() }
         });
 
-        // 2. Create Course in Main Catalog
-        const course = await prisma.course.upsert({
-          where: { slug: disc.slug },
-          update: {
-            titleFa: disc.titleFa,
-            titleEn: disc.titleEn || disc.titleFa,
-            isPublished: true
-          },
-          create: {
-            slug: disc.slug,
-            titleFa: disc.titleFa,
-            titleEn: disc.titleEn || disc.titleFa,
-            descriptionFa: `دوره آموزشی جامع ${disc.titleFa} با دوبله اختصاصی هوش مصنوعی فارسی، کیفیت 1080p و دسترسی نامحدود.`,
-            instructor: disc.instructor || "مدرس بین‌المللی",
-            category: disc.category || "برنامه‌نویسی و DevOps",
-            level: "متوسط تا پیشرفته",
-            thumbnailUrl: disc.thumbnailUrl || "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=800&auto=format&fit=crop&q=80",
-            isPublished: true
-          }
+        // Trigger Master Pipeline Orchestrator (Iran -> US -> Telegram -> Website)
+        const pipelineResult = await startDubbingPipeline({
+          discoveredCourseId: disc.id,
+          slug: disc.slug,
+          titleFa: disc.titleFa,
+          titleEn: disc.titleEn,
+          instructor: disc.instructor,
+          category: disc.category,
+          voiceGender: voiceGender || "male"
         });
 
-        // 3. Create Chapters and Episodes with working stream URLs
-        const existingChapters = await prisma.chapter.findMany({ where: { courseId: course.id } });
-        if (existingChapters.length === 0) {
-          const ch1 = await prisma.chapter.create({
-            data: {
-              courseId: course.id,
-              titleFa: "فصل ۱: مفاهیم پایه، راه‌اندازی و مقدمات یادگیری",
-              orderIndex: 1
-            }
-          });
-
-          await prisma.episode.createMany({
-            data: [
-              {
-                chapterId: ch1.id,
-                titleFa: "جلسه ۱: مقدمه و شروع کار با مفاهیم اصلی",
-                titleEn: "01 - Introduction and Core Concepts",
-                episodeNumber: 1,
-                durationSeconds: 480,
-                streamUrl: "/sample-video.mp4",
-                isFreePreview: true
-              },
-              {
-                chapterId: ch1.id,
-                titleFa: "جلسه ۲: نصب ابزارها و اجرای پروژه عملی اول",
-                titleEn: "02 - Setup and First Hands-On Project",
-                episodeNumber: 2,
-                durationSeconds: 620,
-                streamUrl: "/sample-video.mp4",
-                isFreePreview: true
-              }
-            ]
-          });
-
-          const ch2 = await prisma.chapter.create({
-            data: {
-              courseId: course.id,
-              titleFa: "فصل ۲: پیاده‌سازی حرفه‌ای، بهینه‌سازی و استقرار کلاود",
-              orderIndex: 2
-            }
-          });
-
-          await prisma.episode.createMany({
-            data: [
-              {
-                chapterId: ch2.id,
-                titleFa: "جلسه ۳: معماری پیشرفته و حل چالش‌های Enterprise",
-                titleEn: "03 - Advanced Architecture & Enterprise Challenges",
-                episodeNumber: 3,
-                durationSeconds: 780,
-                streamUrl: "/sample-video.mp4",
-                isFreePreview: false
-              },
-              {
-                chapterId: ch2.id,
-                titleFa: "جلسه ۴: امنیت، بهینه‌سازی و استقرار در سطح پروداکشن",
-                titleEn: "04 - Security, Optimization & Production Deployment",
-                episodeNumber: 4,
-                durationSeconds: 910,
-                streamUrl: "/sample-video.mp4",
-                isFreePreview: false
-              }
-            ]
-          });
-        }
-
-        // 4. Create Ingestion Batch Record for Live Queue
-        await prisma.ingestionBatch.create({
-          data: {
-            sourceUrl: disc.url,
-            courseTitle: disc.titleFa,
-            status: "DUBBING",
-            totalParts: disc.totalParts || 1,
-            totalEpisodes: 4,
-            completedEpisodes: 1,
-            currentStage: "دریافت خودکار از سرور ایران و ارسال به موتور هوش مصنوعی آمریکا...",
-            voiceGender: voiceGender || "male"
-          }
-        });
-
-        // 5. Automatically Broadcast & Upload to Telegram Channel
-        try {
-          await publishCourseToTelegram({
-            courseTitleFa: course.titleFa,
-            courseTitleEn: course.titleEn,
-            slug: course.slug,
-            instructor: course.instructor,
-            category: course.category,
-            thumbnailUrl: course.thumbnailUrl,
-            episodeTitle: "جلسه ۱: مقدمه و شروع کار با مفاهیم اصلی"
-          });
-        } catch (tgErr: any) {
-          console.warn("Telegram auto-publish warning:", tgErr.message);
-        }
-
-        results.push({ id: disc.id, titleFa: disc.titleFa, slug: disc.slug });
+        results.push({ id: disc.id, titleFa: disc.titleFa, slug: disc.slug, batchId: pipelineResult.batchId });
       }
 
       return NextResponse.json({
         success: true,
-        message: `🎉 تعداد ${results.length} دوره با موفقیت تایید، به خط تولید ارسال و در کانال تلگرام منتشر شدند!`,
+        message: `🎉 تعداد ${results.length} دوره به خط تولید متصل و فرآیند دوبله در سرور آمریکا و آپلود تلگرام آغاز شد!`,
         results
       });
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { publishCourseToTelegram } from "@/lib/telegram-publisher";
+import { startDubbingPipeline } from "@/lib/pipeline-orchestrator";
 
 // Track mock/in-memory jobs if any
 let inMemoryActiveJob: any = null;
@@ -144,19 +145,16 @@ export async function POST(request: Request) {
     const { action, batchId, courseTitle, sourceUrl, totalParts, voiceGender } = await request.json();
 
     if (action === "START_NEW") {
-      const newBatch = await prisma.ingestionBatch.create({
-        data: {
-          sourceUrl: sourceUrl || "https://downloadly.ir/sample",
-          courseTitle: courseTitle || "دوره آموزشی جدید",
-          status: "DUBBING",
-          totalParts: totalParts || 4,
-          totalEpisodes: 4,
-          completedEpisodes: 0,
-          currentStage: "در حال دریافت و آغاز خط تولید خودکار...",
-          voiceGender: voiceGender || "male"
-        }
+      const pipelineResult = await startDubbingPipeline({
+        videoUrl: sourceUrl,
+        titleFa: courseTitle || "دوره جدید آموزشی",
+        voiceGender: voiceGender || "male"
       });
-      return NextResponse.json({ success: true, message: "خط تولید برای دوره با موفقیت شروع شد!", batch: newBatch });
+      return NextResponse.json({
+        success: true,
+        message: "خط تولید خودکار فعال و به موتور هوش مصنوعی متصل گردید!",
+        batchId: pipelineResult.batchId
+      });
     }
 
     if (action === "COMPLETE_NOW" && batchId) {
