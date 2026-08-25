@@ -1,7 +1,10 @@
 import { prisma } from "./prisma";
 import { publishCourseToTelegram } from "./telegram-publisher";
 
-const US_ENGINE_URL = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
+const US_ENGINE_HOSTS = [
+  "http://209.145.63.253:8000",
+  "http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io"
+];
 
 export interface PipelineTriggerOptions {
   courseId?: string;
@@ -13,6 +16,31 @@ export interface PipelineTriggerOptions {
   instructor?: string;
   category?: string;
   voiceGender?: string;
+}
+
+/**
+ * Helper to call US AI Engine with multi-endpoint fallback
+ */
+async function callUSEngine(endpoint: string, options: RequestInit = {}) {
+  let lastError: Error | null = null;
+
+  for (const host of US_ENGINE_HOSTS) {
+    try {
+      const url = `${host}${endpoint}`;
+      const res = await fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(25000)
+      });
+      if (res.ok) {
+        return { res, host, data: await res.json() };
+      }
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[Orchestrator] Call to ${host}${endpoint} failed:`, err.message);
+    }
+  }
+
+  throw lastError || new Error(`All US Engine endpoints failed for ${endpoint}`);
 }
 
 /**
@@ -44,11 +72,10 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
       totalParts: 1,
       totalEpisodes: 4,
       completedEpisodes: 0,
-      currentStage: "شروع زنجیره خودکار: ارسال ویدیو از سرور ایران به موتور هوش مصنوعی آمریکا...",
+      currentStage: "شروع زنجیره خودکار: اتصال به موتور هوش مصنوعی آمریکا...",
       voiceGender: voiceGender,
       logs: JSON.stringify([
-        { time: new Date().toISOString(), message: "🚀 Job initiated by Master Pipeline Orchestrator." },
-        { time: new Date().toISOString(), message: "📦 Video source identified on Iran server." }
+        { time: new Date().toISOString(), message: "🚀 آغاز خط تولید و هماهنگی سرور ایران و آمریکا" }
       ])
     }
   });
@@ -81,9 +108,9 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
   // 3. Dispatch Job to US Engine in Background
   (async () => {
     try {
-      console.log(`[Orchestrator] Sending job to US AI Engine: ${US_ENGINE_URL}/api/v1/dub/submit`);
+      console.log(`[Orchestrator] Submitting job to US AI Engine for: ${titleFa}`);
       
-      const submitRes = await fetch(`${US_ENGINE_URL}/api/v1/dub/submit`, {
+      const submitResult = await callUSEngine("/api/v1/dub/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -91,24 +118,19 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
           title: titleFa,
           voice_gender: voiceGender,
           preserve_bgm: true
-        }),
-        signal: AbortSignal.timeout(20000)
+        })
       });
 
-      if (!submitRes.ok) {
-        throw new Error(`US Engine returned status ${submitRes.status}`);
-      }
+      const usJobId = submitResult.data.job_id;
+      const activeHost = submitResult.host;
+      console.log(`[Orchestrator] Job successfully registered on US Engine [${activeHost}] with ID: ${usJobId}`);
 
-      const submitData = await submitRes.json();
-      const usJobId = submitData.job_id;
-      console.log(`[Orchestrator] Job registered on US Engine with ID: ${usJobId}`);
-
-      // Update IngestionBatch with US Job ID
+      // Update IngestionBatch
       await prisma.ingestionBatch.update({
         where: { id: batch.id },
         data: {
           status: "DUBBING",
-          currentStage: "موتور آمریکا: در حال تبدیل گفتار به متن (Whisper) و ترجمه هوشمند...",
+          currentStage: "موتور آمریکا: در حال پردازش صوت با Whisper و ترجمه هوشمند اصطلاحات...",
         }
       });
 
@@ -117,40 +139,38 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
       let attempts = 0;
       let finalResult: any = null;
 
-      while (!isDone && attempts < 30) {
+      while (!isDone && attempts < 35) {
         attempts++;
         await new Promise((r) => setTimeout(r, 4000));
 
         try {
-          const statusRes = await fetch(`${US_ENGINE_URL}/api/v1/dub/status/${usJobId}`, {
-            signal: AbortSignal.timeout(8000)
+          const statusResult = await callUSEngine(`/api/v1/dub/status/${usJobId}`, {
+            method: "GET"
           });
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
+          const statusData = statusResult.data;
 
-            await prisma.ingestionBatch.update({
-              where: { id: batch.id },
-              data: {
-                currentStage: `موتور آمریکا [${statusData.progress}%]: ${statusData.current_stage}`,
-                completedEpisodes: statusData.progress >= 100 ? 4 : Math.floor((statusData.progress / 100) * 4)
-              }
-            });
-
-            if (statusData.status === "COMPLETED") {
-              isDone = true;
-              finalResult = statusData.result;
-            } else if (statusData.status === "FAILED") {
-              throw new Error(statusData.error || "US Engine pipeline failed.");
+          await prisma.ingestionBatch.update({
+            where: { id: batch.id },
+            data: {
+              currentStage: `موتور آمریکا [${statusData.progress}%]: ${statusData.current_stage}`,
+              completedEpisodes: statusData.progress >= 100 ? 4 : Math.floor((statusData.progress / 100) * 4)
             }
+          });
+
+          if (statusData.status === "COMPLETED") {
+            isDone = true;
+            finalResult = statusData.result;
+          } else if (statusData.status === "FAILED") {
+            throw new Error(statusData.error || "US Engine pipeline failed.");
           }
         } catch (pollErr: any) {
-          console.warn("[Orchestrator] Polling warning:", pollErr.message);
+          console.warn("[Orchestrator] Polling status warning:", pollErr.message);
         }
       }
 
       if (finalResult && finalResult.telegram) {
         const tgData = finalResult.telegram;
-        console.log("[Orchestrator] US Engine completed! Telegram post ID:", tgData.message_id, "File ID:", tgData.file_id);
+        console.log("[Orchestrator] US Engine completed! Telegram message ID:", tgData.message_id, "File ID:", tgData.file_id);
 
         // 4. Update Course Chapters & Episodes with real Telegram File ID & Streams
         const chapter = await prisma.chapter.create({
@@ -175,7 +195,7 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
           }
         });
 
-        // 5. Broadcast to Telegram Channel with Web URL
+        // 5. Broadcast announcement to Telegram Channel
         await publishCourseToTelegram({
           courseTitleFa: course.titleFa,
           courseTitleEn: course.titleEn,
@@ -209,7 +229,7 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
         where: { id: batch.id },
         data: {
           status: "FAILED",
-          currentStage: `خطا در اجرای خط تولید: ${err.message}`
+          currentStage: `خطا در خط تولید: ${err.message}`
         }
       });
     }
@@ -220,6 +240,6 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
     batchId: batch.id,
     courseId: course.id,
     courseSlug: course.slug,
-    message: "خط تولید خودکار با موفقیت آغاز شد و به سرور هوش مصنوعی آمریکا متصل گردید."
+    message: "خط تولید خودکار با موفقیت آغاز شد و به سرور هوش مصنوعی متصل گردید."
   };
 }
