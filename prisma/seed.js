@@ -559,8 +559,7 @@ async function main() {
     where: {
       OR: [
         { streamUrl: { contains: "commondatastorage" } },
-        { streamUrl: { contains: "sample-video.mp4" } },
-        { streamUrl: null }
+        { streamUrl: { contains: "sample-video.mp4" } }
       ]
     },
     data: {
