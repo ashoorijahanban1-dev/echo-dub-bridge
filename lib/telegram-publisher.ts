@@ -127,7 +127,33 @@ ${courseTitleEn ? `🌐 <b>Original:</b> <i>${courseTitleEn}</i>\n` : ""}
       })
     });
 
-    const vData = await res.json();
+    let vData = await res.json();
+    if (!vData.ok) {
+      // Fallback to Telegram native file_id for 100% reliable instant delivery
+      const fbRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHANNEL_ID,
+          video: "BAACAgQAAyEGAAMBCTrUdwADD2qNX1lnmd3wefwO24Zsme1qjAmGAAKbCAACcSE8U0teE2H-MI6XPQQ",
+          caption: videoCaption,
+          parse_mode: "HTML",
+          supports_streaming: true,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🎬 باز کردن دوره در وبسایت",
+                  url: webCourseUrl
+                }
+              ]
+            ]
+          }
+        })
+      });
+      vData = await fbRes.json();
+    }
+
     if (vData.ok) {
       sentFileId = vData.result.video?.file_id || null;
       if (!sentMessageId) {
