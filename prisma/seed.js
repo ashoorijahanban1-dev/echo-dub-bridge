@@ -34,7 +34,7 @@ async function main() {
                   titleEn: "Introduction to Containers & Virtual Machines",
                   episodeNumber: 1,
                   durationSeconds: 480,
-                  streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                  streamUrl: "/api/stream/video",
                   isFreePreview: true,
                 },
                 {
@@ -42,7 +42,7 @@ async function main() {
                   titleEn: "Essential Docker CLI Commands in Depth",
                   episodeNumber: 2,
                   durationSeconds: 620,
-                  streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                  streamUrl: "/api/stream/video",
                   isFreePreview: true,
                 }
               ]
@@ -58,7 +58,7 @@ async function main() {
                   titleEn: "Optimizing Image Layers with Multi-Stage Builds",
                   episodeNumber: 3,
                   durationSeconds: 740,
-                  streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                  streamUrl: "/api/stream/video",
                   isFreePreview: false,
                 }
               ]
@@ -99,7 +99,7 @@ async function main() {
                   titleEn: "Async Server Setup & Dependency Injection",
                   episodeNumber: 1,
                   durationSeconds: 510,
-                  streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+                  streamUrl: "/api/stream/video",
                   isFreePreview: true,
                 }
               ]
@@ -140,7 +140,7 @@ async function main() {
                   titleEn: "App Router Fundamentals & Server-Side Rendering",
                   episodeNumber: 1,
                   durationSeconds: 430,
-                  streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+                  streamUrl: "/api/stream/video",
                   isFreePreview: true,
                 }
               ]

@@ -1,44 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { id } = await params;
-
-    // Check if episode has a valid external non-blocked URL
-    try {
-      const episode = await prisma.episode.findFirst({
-        where: {
-          OR: [
-            { id: id },
-            { streamUrl: { contains: id } }
-          ]
-        }
-      });
-
-      if (
-        episode &&
-        episode.streamUrl &&
-        episode.streamUrl.startsWith("http") &&
-        !episode.streamUrl.includes("commondatastorage.googleapis.com") &&
-        !episode.streamUrl.includes("0.0.0.0")
-      ) {
-        return NextResponse.redirect(episode.streamUrl, 307);
-      }
-    } catch {
-      // ignore db error
-    }
-
-    // Stream native domestic video directly with HTTP 206 Partial Content
     const filePath = path.join(process.cwd(), "public", "sample-video.mp4");
 
     if (!fs.existsSync(filePath)) {
-      return new NextResponse("Video stream unavailable", { status: 404 });
+      return new NextResponse("Video not found on server", { status: 404 });
     }
 
     const stat = fs.statSync(filePath);
@@ -92,7 +61,7 @@ export async function GET(
         }
       });
     }
-  } catch (error: any) {
-    return new NextResponse(`Stream error: ${error.message}`, { status: 500 });
+  } catch (err: any) {
+    return new NextResponse(`Streaming error: ${err.message}`, { status: 500 });
   }
 }
