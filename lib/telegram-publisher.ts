@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "8773331933:AAHOavxMB4jHC6CTojqBXjLM13NG6ERh2Ic";
 const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || "-1004449817719";
+const US_ENGINE_URL = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
 
 export interface TelegramPublishOptions {
   courseTitleFa: string;
@@ -15,32 +16,44 @@ export interface TelegramPublishOptions {
 }
 
 /**
- * Robust Telegram API request with multi-endpoint fallback
+ * Robust Telegram API request with US datacenter proxy fallback to bypass Iran censorship
  */
 async function callTelegramAPI(method: string, payload: any): Promise<any> {
-  const endpoints = [
-    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`,
-  ];
-
-  for (const url of endpoints) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(10000)
-      });
-      const data = await res.json();
-      if (data && data.ok) {
-        return data;
+  // 1. First attempt: US AI Engine Proxy (bypasses Iran filtering 100%)
+  try {
+    const pRes = await fetch(`${US_ENGINE_URL}/api/v1/telegram/proxy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method, payload }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (pRes.ok) {
+      const pData = await pRes.json();
+      if (pData && pData.ok) {
+        return pData;
       }
-      console.warn(`Telegram API [${method}] returned non-ok:`, data);
-    } catch (err: any) {
-      console.warn(`Telegram API [${method}] attempt failed via ${url}:`, err.message);
     }
+  } catch (err: any) {
+    console.warn("US Engine Telegram Proxy attempt failed:", err.message);
   }
 
-  return { ok: false, description: "All Telegram endpoints unreachable or returned error" };
+  // 2. Second attempt: Direct Telegram Bot API (if network has open routing)
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000)
+    });
+    const data = await res.json();
+    if (data && data.ok) {
+      return data;
+    }
+  } catch (err: any) {
+    console.warn("Direct Telegram API attempt failed:", err.message);
+  }
+
+  return { ok: false, description: "All Telegram endpoints unreachable" };
 }
 
 /**
@@ -114,7 +127,7 @@ ${courseTitleEn ? `🌐 <b>Original:</b> <i>${courseTitleEn}</i>\n` : ""}
   // 2. Send Video Preview to Telegram Channel
   const videoCaption = `🎥 <b>جلسه ۱: ${episodeTitle || "مقدمه و شروع دوره"}</b>\n\n🎙 <b>دوبله فارسی هوش مصنوعی</b>\n🌐 <a href="${webCourseUrl}">مشاهده تمامی جلسات در سایت</a>`;
 
-  // Try file_id directly for instant, zero-failure delivery
+  // Use high-performance pre-cached Telegram file_id
   const videoPayload: any = {
     chat_id: TELEGRAM_CHANNEL_ID,
     video: "BAACAgQAAyEGAAMBCTrUdwADD2qNX1lnmd3wefwO24Zsme1qjAmGAAKbCAACcSE8U0teE2H-MI6XPQQ",
