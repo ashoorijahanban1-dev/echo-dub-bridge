@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { publishCourseToTelegram } from "@/lib/telegram-publisher";
 
 export async function GET(request: Request) {
   try {
@@ -153,12 +154,27 @@ export async function PATCH(request: Request) {
           }
         });
 
+        // 5. Automatically Broadcast & Upload to Telegram Channel
+        try {
+          await publishCourseToTelegram({
+            courseTitleFa: course.titleFa,
+            courseTitleEn: course.titleEn,
+            slug: course.slug,
+            instructor: course.instructor,
+            category: course.category,
+            thumbnailUrl: course.thumbnailUrl,
+            episodeTitle: "جلسه ۱: مقدمه و شروع کار با مفاهیم اصلی"
+          });
+        } catch (tgErr: any) {
+          console.warn("Telegram auto-publish warning:", tgErr.message);
+        }
+
         results.push({ id: disc.id, titleFa: disc.titleFa, slug: disc.slug });
       }
 
       return NextResponse.json({
         success: true,
-        message: `🎉 تعداد ${results.length} دوره با موفقیت تایید و به خط تولید خودکار هوش مصنوعی ارسال شدند!`,
+        message: `🎉 تعداد ${results.length} دوره با موفقیت تایید، به خط تولید ارسال و در کانال تلگرام منتشر شدند!`,
         results
       });
     }

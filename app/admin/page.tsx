@@ -290,6 +290,27 @@ export default function MissionControlAdminPage() {
     }
   };
 
+  // Broadcast Course & Video to Telegram Channel
+  const handlePublishToTelegram = async (courseId?: string, slug?: string) => {
+    try {
+      setCourseSaveStatus("🚀 در حال ارسال بنر، مشخصات و ویدیو به کانال تلگرام...");
+      const res = await fetch("/api/admin/telegram/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId, slug })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCourseSaveStatus("🎉 دوره و ویدیوی پیش‌نمایش با موفقیت به کانال تلگرام ارسال شدند!");
+      } else {
+        setCourseSaveStatus(`❌ خطا در ارسال تلگرام: ${data.error}`);
+      }
+      setTimeout(() => setCourseSaveStatus(""), 4000);
+    } catch (err: any) {
+      setCourseSaveStatus(`❌ خطا: ${err.message}`);
+    }
+  };
+
   // Data Fetching Functions
   const fetchHealth = async () => {
     try {
@@ -1510,6 +1531,15 @@ export default function MissionControlAdminPage() {
                     <h3 className="text-base font-bold text-white">ویرایشگر بصری دوره (Course Visual CMS)</h3>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePublishToTelegram(selectedCourseEdit.id, selectedCourseEdit.slug)}
+                      className="px-3 py-2 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 hover:text-white transition-colors flex items-center gap-1.5 text-xs font-bold"
+                      title="ارسال بنر و ویدیو به کانال تلگرام"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>انتشار در تلگرام</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteCourse(selectedCourseEdit.id)}
