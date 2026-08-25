@@ -102,8 +102,8 @@ export default function MissionControlAdminPage() {
     }
   };
 
-  // Handle Pipeline Job Action (Retry, Cancel, Clear)
-  const handleQueueAction = async (action: "RETRY" | "CANCEL" | "CLEAR", batchId?: string) => {
+  // Handle Pipeline Job Action (Retry, Cancel, Clear, Complete Now)
+  const handleQueueAction = async (action: "RETRY" | "CANCEL" | "CLEAR" | "COMPLETE_NOW", batchId?: string) => {
     try {
       const res = await fetch("/api/admin/pipeline/queue", {
         method: "POST",
@@ -861,6 +861,17 @@ export default function MissionControlAdminPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQueueAction("COMPLETE_NOW", job.id);
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[11px] font-bold transition-all flex items-center gap-1"
+                            title="تکمیل فوری و انتشار در سایت و تلگرام"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            تکمیل فوری
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
