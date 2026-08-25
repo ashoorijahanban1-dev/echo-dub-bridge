@@ -47,19 +47,29 @@ import {
   Compass,
   Radar,
   Radio,
-  ListFilter
+  ListFilter,
+  Terminal,
+  HardDrive,
+  PlayCircle,
+  StopCircle,
+  RefreshCcw
 } from "lucide-react";
 import { submitDubbingJobToEngine, getEngineJobStatus, DubbingJobStatus } from "@/lib/api-client";
 
 export default function MissionControlAdminPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"health" | "harvester" | "ingestion" | "studio" | "cms-courses" | "cms-articles" | "glossary" | "users" | "analytics" | "settings">("harvester");
+  const [activeTab, setActiveTab] = useState<"queue" | "harvester" | "health" | "ingestion" | "studio" | "cms-courses" | "cms-articles" | "glossary" | "users" | "analytics" | "settings">("queue");
   
   // Health Metrics State
   const [healthData, setHealthData] = useState<any>(null);
   const [isHealthLoading, setIsHealthLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Live Dubbing Pipeline Queue State
+  const [queueData, setQueueData] = useState<any>(null);
+  const [selectedQueueJob, setSelectedQueueJob] = useState<any>(null);
+  const [queueActionMsg, setQueueActionMsg] = useState("");
 
   // Autonomous Harvester & Crawler State
   const [discoveredCourses, setDiscoveredCourses] = useState<any[]>([]);
@@ -71,6 +81,45 @@ export default function MissionControlAdminPage() {
   const [harvesterMode, setHarvesterMode] = useState<"DAILY_HOT" | "DEEP_ARCHIVE">("DAILY_HOT");
   const [archivePage, setArchivePage] = useState(2);
   const [autoPilotMode, setAutoPilotMode] = useState(false);
+
+  // Fetch Live Pipeline Queue Data
+  const fetchQueueData = async () => {
+    try {
+      const res = await fetch("/api/admin/pipeline/queue");
+      if (res.ok) {
+        const data = await res.json();
+        setQueueData(data);
+        if (data.activeJobs?.length > 0) {
+          setSelectedQueueJob((prev: any) => {
+            if (!prev) return data.activeJobs[0];
+            const updated = data.activeJobs.find((j: any) => j.id === prev.id);
+            return updated || data.activeJobs[0];
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Queue fetch error:", err);
+    }
+  };
+
+  // Handle Pipeline Job Action (Retry, Cancel, Clear)
+  const handleQueueAction = async (action: "RETRY" | "CANCEL" | "CLEAR", batchId?: string) => {
+    try {
+      const res = await fetch("/api/admin/pipeline/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, batchId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setQueueActionMsg(data.message);
+        fetchQueueData();
+        setTimeout(() => setQueueActionMsg(""), 3000);
+      }
+    } catch (err: any) {
+      console.error("Queue action error:", err);
+    }
+  };
 
   // Ingestion & Scraper State
   const [scraperUrl, setScraperUrl] = useState("");
@@ -312,6 +361,7 @@ export default function MissionControlAdminPage() {
   };
 
   useEffect(() => {
+    fetchQueueData();
     fetchHealth();
     fetchDiscoveredCourses();
     fetchCourses();
@@ -326,12 +376,13 @@ export default function MissionControlAdminPage() {
     fetchDiscoveredCourses();
   }, [crawlerFilter]);
 
-  // Auto Refresh Interval
+  // Auto Refresh Interval for Health & Live Queue
   useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
       fetchHealth();
-    }, 6000);
+      fetchQueueData();
+    }, 3000);
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
@@ -615,9 +666,10 @@ export default function MissionControlAdminPage() {
         </div>
       </div>
 
-      {/* Navigation Tabs (10 Modules) */}
+      {/* Navigation Tabs (11 Modules) */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
         {[
+          { id: "queue", label: "🔴 صف زنده دوبله و خط تولید", icon: Layers, badge: queueData?.activeJobs?.length > 0 ? `${queueData.activeJobs.length} فعال` : undefined, count: queueData?.activeJobs?.length },
           { id: "harvester", label: "🤖 پویشگر خودکار و کشف دوره‌ها", icon: Radar, badge: "جدید", count: discoveredCourses.length },
           { id: "health", label: "سلامت سرورها و شبکه", icon: Activity },
           { id: "cms-courses", label: "CMS دوره‌ها و سرفصل‌ها", icon: BookOpen, count: courses.length },
@@ -663,7 +715,319 @@ export default function MissionControlAdminPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 0: AUTONOMOUS COURSE HARVESTER & APPROVAL PIPELINE */}
+      {/* TAB 0: LIVE DUBBING PIPELINE & TELEMETRY TERMINAL */}
+      {/* ========================================================================= */}
+      {activeTab === "queue" && (
+        <div className="space-y-6">
+          {/* Top Telemetry & Resource Gauges */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-cyan-950/60 border border-cyan-800/80 flex items-center justify-center text-cyan-400">
+                <Server className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400 font-medium">سرور ایران (دانلود و استخراج)</p>
+                <h4 className="text-lg font-black text-white">{queueData?.systemLoad?.iranServerCpu || "14%"} CPU</h4>
+                <span className="text-[10px] text-emerald-400 font-mono">100Gbps Direct Node</span>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-950/60 border border-purple-800/80 flex items-center justify-center text-purple-400">
+                <Cpu className="w-6 h-6 animate-spin" style={{ animationDuration: "8s" }} />
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400 font-medium">موتور هوش مصنوعی آمریکا</p>
+                <h4 className="text-lg font-black text-white">{queueData?.systemLoad?.usEngineCpu || "38%"} CPU</h4>
+                <span className="text-[10px] text-purple-300 font-mono">Whisper + Gemini 3 Active</span>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-950/60 border border-emerald-800/80 flex items-center justify-center text-emerald-400">
+                <Layers className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400 font-medium">رشته‌های پردازش فعال</p>
+                <h4 className="text-lg font-black text-white">{queueData?.systemLoad?.activeWorkers || 1} ورکر همزمان</h4>
+                <span className="text-[10px] text-emerald-400 font-mono">Zero Backpressure</span>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-950/60 border border-amber-800/80 flex items-center justify-center text-amber-400">
+                <Radio className="w-6 h-6 text-amber-400 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400 font-medium">پهنای باند خط انتقال</p>
+                <h4 className="text-lg font-black text-white">{queueData?.systemLoad?.bandwidthUsage || "120 Mbps"}</h4>
+                <span className="text-[10px] text-amber-300 font-mono">MTProto CDN Tunnel</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Message Banner */}
+          {queueActionMsg && (
+            <div className="p-4 rounded-2xl bg-cyan-950/70 border border-cyan-800 text-cyan-200 text-xs font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+              {queueActionMsg}
+            </div>
+          )}
+
+          {/* Main Grid: Active Jobs (Left) + Black Linux Terminal (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left Col: Active Jobs Queue (7 Cols) */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                  دوره‌ها و ویدیوهای در حال پردازش زنده ({queueData?.activeJobs?.length || 0})
+                </h3>
+                <button
+                  onClick={() => fetchQueueData()}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  بروزرسانی وضعیت
+                </button>
+              </div>
+
+              {(!queueData?.activeJobs || queueData.activeJobs.length === 0) ? (
+                <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-3">
+                  <Layers className="w-12 h-12 text-slate-600 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-300">صف خط تولید در حال حاضر خالی است</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    می‌توانید از تب «پویشگر خودکار» یکی از دوره‌های کشف شده را تایید کنید تا خط تولید و دوبله هوشمند آغاز شود.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("harvester")}
+                    className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 transition-colors shadow-lg shadow-cyan-500/20"
+                  >
+                    <Radar className="w-4 h-4" />
+                    مشاهده دوره‌های کشف شده در انتظار
+                  </button>
+                </div>
+              ) : (
+                queueData.activeJobs.map((job: any) => {
+                  const isSelected = selectedQueueJob?.id === job.id;
+                  return (
+                    <div
+                      key={job.id}
+                      onClick={() => setSelectedQueueJob(job)}
+                      className={`p-5 rounded-3xl border transition-all cursor-pointer space-y-4 ${
+                        isSelected
+                          ? "bg-slate-900 border-cyan-500/80 shadow-xl shadow-cyan-500/10"
+                          : "bg-slate-900/70 border-slate-800 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-950 text-cyan-300 border border-cyan-800">
+                              {job.totalParts} پارت RAR
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-purple-950 text-purple-300 border border-purple-800">
+                              صدای {job.voiceGender === "female" ? "زنانه" : "مردانه"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              سپری شده: {job.elapsedSeconds}s
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-white leading-snug">
+                            {job.courseTitle}
+                          </h4>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQueueAction("CANCEL", job.id);
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-300 text-[11px] font-bold transition-all flex items-center gap-1"
+                            title="لغو پردازش این دوره"
+                          >
+                            <StopCircle className="w-3.5 h-3.5" />
+                            لغو جاب
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Live Animated Progress Bar */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span className="text-cyan-400 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                            {job.currentStage}
+                          </span>
+                          <span className="text-white font-mono font-black">{job.progress}%</span>
+                        </div>
+                        <div className="w-full h-3 rounded-full bg-slate-950 overflow-hidden p-0.5 border border-slate-800">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 transition-all duration-500 relative"
+                            style={{ width: `${Math.max(5, job.progress)}%` }}
+                          >
+                            <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Micro stages checklist */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 text-[11px]">
+                        <div className={`flex items-center gap-1.5 ${job.progress >= 20 ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          دانلود پارت‌ها
+                        </div>
+                        <div className={`flex items-center gap-1.5 ${job.progress >= 50 ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Whisper & Gemini
+                        </div>
+                        <div className={`flex items-center gap-1.5 ${job.progress >= 85 ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          دوبله و میکس
+                        </div>
+                        <div className={`flex items-center gap-1.5 ${job.progress >= 98 ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          انتشار در سایت
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {/* Completed Jobs History */}
+              {queueData?.historyJobs?.length > 0 && (
+                <div className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
+                      تاریخچه جاب‌های اخیر پایان‌یافته ({queueData.historyJobs.length})
+                    </h4>
+                    <button
+                      onClick={() => handleQueueAction("CLEAR")}
+                      className="text-[11px] text-slate-500 hover:text-slate-300 font-semibold"
+                    >
+                      پاکسازی تاریخچه
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {queueData.historyJobs.map((hJob: any) => (
+                      <div
+                        key={hJob.id}
+                        className="p-3.5 rounded-2xl bg-slate-900/40 border border-slate-800/80 flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {hJob.status === "COMPLETED" ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                          )}
+                          <span className="text-slate-200 font-medium truncate">{hJob.courseTitle}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            hJob.status === "COMPLETED"
+                              ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                              : "bg-red-950 text-red-400 border border-red-800"
+                          }`}>
+                            {hJob.status === "COMPLETED" ? "تکمیل و منتشر شده" : "متوقف شده"}
+                          </span>
+                          <button
+                            onClick={() => setActiveTab("cms-courses")}
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold flex items-center gap-1 transition-colors"
+                          >
+                            <BookOpen className="w-3 h-3" />
+                            مشاهده
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Col: Live Linux Terminal Telemetry (5 Cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-cyan-400" />
+                  ترمینال زنده تله‌متری خط تولید (Live Console)
+                </h3>
+                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  STREAMING
+                </span>
+              </div>
+
+              <div className="rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl overflow-hidden font-mono text-xs flex flex-col h-[480px]">
+                {/* Terminal Header */}
+                <div className="px-4 py-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block" />
+                    <span className="w-3 h-3 rounded-full bg-yellow-500/80 inline-block" />
+                    <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+                    <span className="text-slate-400 text-[11px] font-semibold mr-2">
+                      echo-dub-engine@iran-us-bridge
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500">tail -f /var/log/pipeline.log</span>
+                </div>
+
+                {/* Terminal Body */}
+                <div className="p-4 flex-1 overflow-y-auto space-y-2 text-slate-300 text-[11px] leading-relaxed">
+                  <div className="text-slate-500">
+                    # EchoDub AI Autonomous Orchestrator v3.0 initialized.
+                  </div>
+                  <div className="text-slate-500">
+                    # Listening for active batches from Iran and US workers...
+                  </div>
+                  
+                  {selectedQueueJob?.logs && selectedQueueJob.logs.length > 0 ? (
+                    selectedQueueJob.logs.map((log: string, idx: number) => {
+                      let colorClass = "text-slate-300";
+                      if (log.includes("[IRAN-NODE]")) colorClass = "text-cyan-300";
+                      if (log.includes("[UNRAR]")) colorClass = "text-yellow-300";
+                      if (log.includes("[US-ENGINE]")) colorClass = "text-purple-300";
+                      if (log.includes("[AI-TRANSLATE]")) colorClass = "text-blue-300";
+                      if (log.includes("[AUDIO-MIX]")) colorClass = "text-pink-300";
+                      if (log.includes("[PUBLISH]")) colorClass = "text-emerald-300 font-bold";
+                      return (
+                        <div key={idx} className={`${colorClass} flex items-start gap-2`}>
+                          <span className="text-slate-600 select-none">&gt;</span>
+                          <span>{log}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-slate-600 italic">
+                      در انتظار انتخاب یا شروع جاب برای نمایش رویدادها...
+                    </div>
+                  )}
+
+                  {/* Terminal Cursor */}
+                  <div className="flex items-center gap-1 text-emerald-400 pt-2">
+                    <span className="text-slate-600 select-none">&gt;</span>
+                    <span className="w-2 h-4 bg-emerald-400 animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Terminal Footer */}
+                <div className="px-4 py-2 bg-slate-900/60 border-t border-slate-800/80 text-[10px] text-slate-500 flex items-center justify-between">
+                  <span>Target: 209.145.63.253 (US AI Engine)</span>
+                  <span>TLS 1.3 / WebSocket</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 1: AUTONOMOUS COURSE HARVESTER & APPROVAL PIPELINE */}
       {/* ========================================================================= */}
       {activeTab === "harvester" && (
         <div className="space-y-6">
