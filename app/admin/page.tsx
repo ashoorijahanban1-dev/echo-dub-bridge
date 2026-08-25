@@ -68,6 +68,9 @@ export default function MissionControlAdminPage() {
   const [crawlerFilter, setCrawlerFilter] = useState<"ALL" | "DISCOVERED" | "DUBBED" | "REJECTED">("DISCOVERED");
   const [selectedDiscoveredIds, setSelectedDiscoveredIds] = useState<string[]>([]);
   const [harvesterStatusMsg, setHarvesterStatusMsg] = useState("");
+  const [harvesterMode, setHarvesterMode] = useState<"DAILY_HOT" | "DEEP_ARCHIVE">("DAILY_HOT");
+  const [archivePage, setArchivePage] = useState(2);
+  const [autoPilotMode, setAutoPilotMode] = useState(false);
 
   // Ingestion & Scraper State
   const [scraperUrl, setScraperUrl] = useState("");
@@ -147,6 +150,48 @@ export default function MissionControlAdminPage() {
       setTimeout(() => setHarvesterStatusMsg(""), 4000);
     } catch (err: any) {
       setHarvesterStatusMsg(`❌ خطا در پویش: ${err.message}`);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  // Run Dual-Mode Auto Sync (Daily Hot vs Deep Archive)
+  const handleRunAutoSync = async (mode: "DAILY_HOT" | "DEEP_ARCHIVE") => {
+    setIsDiscovering(true);
+    setHarvesterStatusMsg(
+      mode === "DAILY_HOT"
+        ? "🔥 در حال شکار دوره‌های داغ و ترند روز از دانلودلی..."
+        : `⏳ در حال همگام‌سازی عمیق آرشیو (صفحه ${archivePage}) در ساعات خلوتی...`
+    );
+    try {
+      const res = await fetch("/api/admin/crawler/auto-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          page: archivePage,
+          autoApprove: autoPilotMode,
+          keyword: crawlerKeyword
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (mode === "DEEP_ARCHIVE") {
+        setArchivePage((prev) => prev + 1);
+      }
+
+      setHarvesterStatusMsg(
+        autoPilotMode
+          ? `🎉 تعداد ${data.count} دوره کشف و ${data.autoApprovedCount} دوره به صورت خودکار تایید و به خط تولید ارسال شدند!`
+          : `✅ تعداد ${data.count} دوره جدید کشف و به صف بررسی اضافه شدند.`
+      );
+      fetchDiscoveredCourses();
+      fetchCourses();
+      fetchAnalytics();
+      setTimeout(() => setHarvesterStatusMsg(""), 5000);
+    } catch (err: any) {
+      setHarvesterStatusMsg(`❌ خطا در همگام‌سازی: ${err.message}`);
     } finally {
       setIsDiscovering(false);
     }
@@ -623,27 +668,54 @@ export default function MissionControlAdminPage() {
       {activeTab === "harvester" && (
         <div className="space-y-6">
           <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
                   <Radar className="w-6 h-6 text-cyan-400 animate-spin" style={{ animationDuration: "10s" }} />
-                  پویشگر خودکار دانلودلی (Autonomous Course Harvester)
+                  پویشگر خودکار و همگام‌ساز دوگانه دانلودلی (Dual-Mode Autonomous Harvester)
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  پویشگر به صورت خودکار دوره‌های جدید را پیدا و لیست می‌کند؛ با یک کلیک دوره‌ها را تایید و خط تولید دانلود و دوبله را استارت بزنید!
+                  شکار خودکار دوره‌های داغ ۲۴ ساعت اخیر + همگام‌سازی تدریجی آرشیو دانلودلی در ساعات خلوتی سیستم
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              {/* Dual-Mode Action Buttons & Auto Pilot */}
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => handleScanCrawler()}
+                  onClick={() => handleRunAutoSync("DAILY_HOT")}
                   disabled={isDiscovering}
-                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-cyan-500/25 flex items-center gap-2 transition-all shrink-0 disabled:opacity-50"
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:to-red-400 text-slate-950 font-black text-xs shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-all shrink-0 disabled:opacity-50"
+                  title="اسکن و استخراج جدیدترین و داغ‌ترین دوره‌های ۲۴ ساعت گذشته"
                 >
-                  <RefreshCw className={`w-4 h-4 ${isDiscovering ? "animate-spin" : ""}`} />
-                  <span>{isDiscovering ? "در حال پویش خودکار..." : "پویش جدیدترین دوره‌های دانلودلی"}</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span>🔥 شکار دوره‌های داغ امروز</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleRunAutoSync("DEEP_ARCHIVE")}
+                  disabled={isDiscovering}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold text-xs border border-cyan-800/60 flex items-center gap-2 transition-all shrink-0 disabled:opacity-50"
+                  title="استخراج عمیق صفحات گذشته آرشیو برای همگام‌سازی کامل دیتابیس"
+                >
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <span>⏳ سینک آرشیو (صفحه {archivePage})</span>
+                </button>
+
+                {/* Auto Pilot Switch */}
+                <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer text-xs font-semibold text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={autoPilotMode}
+                    onChange={(e) => setAutoPilotMode(e.target.checked)}
+                    className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
+                  />
+                  <span className={autoPilotMode ? "text-cyan-400 font-black flex items-center gap-1" : "text-slate-400"}>
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    خلبان خودکار (تایید آنی)
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -734,10 +806,23 @@ export default function MissionControlAdminPage() {
                     }`}
                   >
                     <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800">
-                          {disc.category}
-                        </span>
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800">
+                            {disc.category}
+                          </span>
+                          {disc.isHot && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-950/90 text-red-400 border border-red-800 flex items-center gap-1">
+                              <span>🔥 داغ ۲۰۲۶</span>
+                            </span>
+                          )}
+                          {disc.sourcePage > 1 && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-900 text-slate-400 border border-slate-800">
+                              ص {disc.sourcePage}
+                            </span>
+                          )}
+                        </div>
+
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           disc.status === "DUBBED"
                             ? "bg-emerald-950 text-emerald-400 border border-emerald-800"

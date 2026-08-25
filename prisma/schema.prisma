@@ -97,6 +97,8 @@ model DiscoveredCourse {
   category        String      @default("برنامه‌نویسی و DevOps")
   totalParts      Int         @default(1)
   rarLinksJson    String      @default("[]")
+  isHot           Boolean     @default(false)
+  sourcePage      Int         @default(1)
   status          String      @default("DISCOVERED") // DISCOVERED, APPROVED, PROCESSING, DUBBED, REJECTED
   discoveredAt    DateTime    @default(now())
   approvedAt      DateTime?
