@@ -43,19 +43,31 @@ import {
   LayoutTemplate,
   Save,
   Eye,
-  Plus
+  Plus,
+  Compass,
+  Radar,
+  Radio,
+  ListFilter
 } from "lucide-react";
 import { submitDubbingJobToEngine, getEngineJobStatus, DubbingJobStatus } from "@/lib/api-client";
 
 export default function MissionControlAdminPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"health" | "ingestion" | "studio" | "cms-courses" | "cms-articles" | "glossary" | "users" | "analytics" | "settings">("health");
+  const [activeTab, setActiveTab] = useState<"health" | "harvester" | "ingestion" | "studio" | "cms-courses" | "cms-articles" | "glossary" | "users" | "analytics" | "settings">("harvester");
   
   // Health Metrics State
   const [healthData, setHealthData] = useState<any>(null);
   const [isHealthLoading, setIsHealthLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Autonomous Harvester & Crawler State
+  const [discoveredCourses, setDiscoveredCourses] = useState<any[]>([]);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [crawlerKeyword, setCrawlerKeyword] = useState("");
+  const [crawlerFilter, setCrawlerFilter] = useState<"ALL" | "DISCOVERED" | "DUBBED" | "REJECTED">("DISCOVERED");
+  const [selectedDiscoveredIds, setSelectedDiscoveredIds] = useState<string[]>([]);
+  const [harvesterStatusMsg, setHarvesterStatusMsg] = useState("");
 
   // Ingestion & Scraper State
   const [scraperUrl, setScraperUrl] = useState("");
@@ -103,6 +115,87 @@ export default function MissionControlAdminPage() {
   const [settingsList, setSettingsList] = useState<any[]>([]);
   const [savedSettingsMsg, setSavedSettingsMsg] = useState("");
 
+  // Fetch Discovered Courses
+  const fetchDiscoveredCourses = async () => {
+    try {
+      const res = await fetch(`/api/admin/crawler/courses?status=${crawlerFilter}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDiscoveredCourses(data);
+      }
+    } catch (err) {
+      console.error("Discovered courses error:", err);
+    }
+  };
+
+  // Run Autonomous Crawl / Scan
+  const handleScanCrawler = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsDiscovering(true);
+    setHarvesterStatusMsg("🔍 در حال پویش و اسکن هوشمند فید دوره‌های دانلودلی...");
+    try {
+      const res = await fetch("/api/admin/crawler/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keyword: crawlerKeyword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setHarvesterStatusMsg(`✅ تعداد ${data.count} دوره جدید کشف و به لیست تایید اضافه شد.`);
+      fetchDiscoveredCourses();
+      setTimeout(() => setHarvesterStatusMsg(""), 4000);
+    } catch (err: any) {
+      setHarvesterStatusMsg(`❌ خطا در پویش: ${err.message}`);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  // Approve Discovered Course(s) -> Start Production!
+  const handleApproveCourses = async (courseIds: string[]) => {
+    try {
+      setHarvesterStatusMsg("🚀 در حال تایید و ارسال به خط تولید خودکار هوش مصنوعی...");
+      const res = await fetch("/api/admin/crawler/courses", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseIds,
+          action: "APPROVE",
+          voiceGender: ingestVoice
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setHarvesterStatusMsg(data.message);
+      setSelectedDiscoveredIds([]);
+      fetchDiscoveredCourses();
+      fetchCourses();
+      fetchAnalytics();
+      setTimeout(() => setHarvesterStatusMsg(""), 5000);
+    } catch (err: any) {
+      setHarvesterStatusMsg(`❌ خطا: ${err.message}`);
+    }
+  };
+
+  // Reject Discovered Course(s)
+  const handleRejectCourses = async (courseIds: string[]) => {
+    try {
+      const res = await fetch("/api/admin/crawler/courses", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseIds, action: "REJECT" })
+      });
+      if (res.ok) {
+        setSelectedDiscoveredIds([]);
+        fetchDiscoveredCourses();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Data Fetching Functions
   const fetchHealth = async () => {
     try {
@@ -122,10 +215,7 @@ export default function MissionControlAdminPage() {
   const fetchCourses = async () => {
     try {
       const res = await fetch("/api/courses");
-      if (res.ok) {
-        const data = await res.json();
-        setCourses(data);
-      }
+      if (res.ok) setCourses(await res.json());
     } catch (err) {
       console.error("Courses fetch error:", err);
     }
@@ -178,6 +268,7 @@ export default function MissionControlAdminPage() {
 
   useEffect(() => {
     fetchHealth();
+    fetchDiscoveredCourses();
     fetchCourses();
     fetchArticles();
     fetchGlossary();
@@ -185,6 +276,10 @@ export default function MissionControlAdminPage() {
     fetchAnalytics();
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    fetchDiscoveredCourses();
+  }, [crawlerFilter]);
 
   // Auto Refresh Interval
   useEffect(() => {
@@ -441,23 +536,23 @@ export default function MissionControlAdminPage() {
         <div className="relative z-10 space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              مرکز فرماندهی و CMS حرفه‌ای (Enterprise CMS & Studio)
+              <Radar className="w-3.5 h-3.5 animate-pulse" />
+              مرکز فرماندهی پویشگر هوشمند (Autonomous Harvester & Studio)
             </span>
-            <span className="text-xs text-slate-400 font-mono">v2.5 Full Suite</span>
+            <span className="text-xs text-slate-400 font-mono">v3.0 Auto Pilot</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
-            <LayoutTemplate className="w-8 h-8 text-cyan-400" />
-            داشبورد مدیریت محتوا (CMS) و خط تولید خودکار
+            <Radar className="w-8 h-8 text-cyan-400" />
+            پویشگر خودکار دانلودلی و خط تولید هوش مصنوعی
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            مدیریت کامل دوره‌ها، سرفصل‌ها، مقالات وبلاگ، اسکرپر دانلودلی، واژه‌نامه تخصصی و سلامت سرورها
+            کشف خودکار دوره‌های جدید، تایید لیست با یک کلیک، دانلود در سرور ایران، دوبله در آمریکا و انتشار در سایت
           </p>
         </div>
 
         <div className="relative z-10 flex flex-wrap items-center gap-3">
           <button
-            onClick={() => { fetchHealth(); fetchCourses(); fetchArticles(); fetchAnalytics(); }}
+            onClick={() => { fetchHealth(); fetchDiscoveredCourses(); fetchCourses(); fetchAnalytics(); }}
             className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors flex items-center gap-2 text-xs font-semibold"
             title="بروزرسانی زنده تمام داده‌ها"
           >
@@ -475,14 +570,15 @@ export default function MissionControlAdminPage() {
         </div>
       </div>
 
-      {/* Navigation Tabs (9 Full Modules) */}
+      {/* Navigation Tabs (10 Modules) */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
         {[
+          { id: "harvester", label: "🤖 پویشگر خودکار و کشف دوره‌ها", icon: Radar, badge: "جدید", count: discoveredCourses.length },
           { id: "health", label: "سلامت سرورها و شبکه", icon: Activity },
-          { id: "ingestion", label: "اسکرپر و هاب دانلودلی", icon: DownloadCloud, badge: "خودکار" },
           { id: "cms-courses", label: "CMS دوره‌ها و سرفصل‌ها", icon: BookOpen, count: courses.length },
           { id: "cms-articles", label: "CMS مقالات و وبلاگ", icon: FileText, count: articles.length },
-          { id: "studio", label: "استودیوی دوبله ویدیو", icon: Sparkles },
+          { id: "ingestion", label: "لینک مستقیم دانلودلی", icon: DownloadCloud },
+          { id: "studio", label: "استودیوی دوبله تک ویدیو", icon: Sparkles },
           { id: "glossary", label: "واژه‌نامه تخصصی IT", icon: BookMarked, count: glossaryTerms.length },
           { id: "users", label: "کاربران و اشتراک VIP", icon: Users, count: usersList.length },
           { id: "analytics", label: "آمار و هوش تجاری", icon: BarChart3 },
@@ -520,6 +616,215 @@ export default function MissionControlAdminPage() {
           );
         })}
       </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 0: AUTONOMOUS COURSE HARVESTER & APPROVAL PIPELINE */}
+      {/* ========================================================================= */}
+      {activeTab === "harvester" && (
+        <div className="space-y-6">
+          <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                  <Radar className="w-6 h-6 text-cyan-400 animate-spin" style={{ animationDuration: "10s" }} />
+                  پویشگر خودکار دانلودلی (Autonomous Course Harvester)
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  پویشگر به صورت خودکار دوره‌های جدید را پیدا و لیست می‌کند؛ با یک کلیک دوره‌ها را تایید و خط تولید دانلود و دوبله را استارت بزنید!
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleScanCrawler()}
+                  disabled={isDiscovering}
+                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-cyan-500/25 flex items-center gap-2 transition-all shrink-0 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isDiscovering ? "animate-spin" : ""}`} />
+                  <span>{isDiscovering ? "در حال پویش خودکار..." : "پویش جدیدترین دوره‌های دانلودلی"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Keyword Search & Category Harvester */}
+            <form onSubmit={handleScanCrawler} className="flex flex-col sm:flex-row gap-3 p-4 rounded-2xl bg-slate-950 border border-slate-850">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={crawlerKeyword}
+                  onChange={(e) => setCrawlerKeyword(e.target.value)}
+                  placeholder="جستجوی موضوعی و کشف خودکار در دانلودلی (مثال: React 19, Kubernetes, Python, AI)..."
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                />
+                <Search className="w-4 h-4 text-slate-500 absolute right-3.5 top-3 pointer-events-none" />
+              </div>
+              <button
+                type="submit"
+                disabled={isDiscovering}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+              >
+                <span>کشف بر اساس موضوع</span>
+              </button>
+            </form>
+
+            {harvesterStatusMsg && (
+              <div className="p-4 rounded-xl bg-cyan-950/60 border border-cyan-800 text-cyan-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>{harvesterStatusMsg}</span>
+              </div>
+            )}
+
+            {/* Filter & Batch Actions Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-slate-800">
+              {/* Status Filter Buttons */}
+              <div className="flex items-center gap-1.5">
+                {[
+                  { id: "DISCOVERED", label: "منتظر تایید ادمین" },
+                  { id: "ALL", label: "همه دوره‌ها" },
+                  { id: "DUBBED", label: "دوبله و منتشر شده" },
+                  { id: "REJECTED", label: "رد شده" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setCrawlerFilter(f.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                      crawlerFilter === f.id
+                        ? "bg-cyan-500 text-slate-950 font-bold"
+                        : "bg-slate-950 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Batch Actions */}
+              {selectedDiscoveredIds.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-300 font-bold">{selectedDiscoveredIds.length} دوره انتخاب شده:</span>
+                  <button
+                    onClick={() => handleApproveCourses(selectedDiscoveredIds)}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>تایید و شروع خط تولید گروهی</span>
+                  </button>
+                  <button
+                    onClick={() => handleRejectCourses(selectedDiscoveredIds)}
+                    className="px-3 py-2 rounded-xl bg-red-950/60 hover:bg-red-900 text-red-400 hover:text-white text-xs font-bold"
+                  >
+                    رد کردن
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Discovered Courses Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {discoveredCourses.map((disc) => {
+                const isSelected = selectedDiscoveredIds.includes(disc.id);
+                return (
+                  <div
+                    key={disc.id}
+                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
+                      isSelected
+                        ? "bg-slate-850 border-cyan-500 shadow-lg shadow-cyan-500/10"
+                        : "bg-slate-950 border-slate-800/90 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800">
+                          {disc.category}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          disc.status === "DUBBED"
+                            ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                            : disc.status === "REJECTED"
+                            ? "bg-red-950 text-red-400 border border-red-800"
+                            : "bg-amber-950 text-amber-400 border border-amber-800"
+                        }`}>
+                          {disc.status === "DUBBED" ? "دوبله و منتشر شده" : disc.status === "REJECTED" ? "رد شده" : "منتظر تایید"}
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm font-bold text-white leading-snug line-clamp-2">{disc.titleFa}</h3>
+
+                      <div className="text-[11px] text-slate-400 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span>مدرس:</span>
+                          <span className="text-slate-200 font-semibold">{disc.instructor}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>پارت‌های RAR:</span>
+                          <span className="text-cyan-400 font-mono font-bold">{disc.totalParts} پارت</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-3 border-t border-slate-850 flex items-center justify-between gap-2">
+                      <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedDiscoveredIds([...selectedDiscoveredIds, disc.id]);
+                            else setSelectedDiscoveredIds(selectedDiscoveredIds.filter(id => id !== disc.id));
+                          }}
+                          className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
+                        />
+                        <span>انتخاب</span>
+                      </label>
+
+                      {disc.status === "DISCOVERED" && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleRejectCourses([disc.id])}
+                            className="p-2 rounded-xl bg-slate-900 hover:bg-red-950 text-slate-400 hover:text-red-400 transition-colors"
+                            title="رد کردن"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleApproveCourses([disc.id])}
+                            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all"
+                          >
+                            <Zap className="w-3.5 h-3.5" />
+                            <span>تایید و شروع دوبله</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {disc.status === "DUBBED" && (
+                        <a
+                          href={`/courses/${disc.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-semibold"
+                        >
+                          <span>تماشا در سایت</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {discoveredCourses.length === 0 && (
+              <div className="text-center py-16 text-slate-500 space-y-3">
+                <Radar className="w-10 h-10 mx-auto text-slate-600" />
+                <h3 className="text-sm font-bold text-white">هیچ دوره‌ای در این فیلتر یافت نشد</h3>
+                <p className="text-xs">برای اسکن جدیدترین دوره‌ها، دکمه «پویش جدیدترین دوره‌های دانلودلی» را بزنید.</p>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: SYSTEM HEALTH */}
@@ -614,17 +919,17 @@ export default function MissionControlAdminPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: SMART DOWNLOADLY INGESTION */}
+      {/* TAB 2: MANUAL DOWNLOADLY INGESTION */}
       {/* ========================================================================= */}
       {activeTab === "ingestion" && (
         <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-6">
           <div>
             <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
               <DownloadCloud className="w-6 h-6 text-cyan-400" />
-              اسکرپر هوشمند و خط تولید تمام‌خودکار Downloadly.ir
+              دریافت دستی دوره با لینک صفحه Downloadly.ir
             </h2>
             <p className="text-xs text-slate-400 mt-1">
-              آدرس دوره را وارد کنید تا تمام پارت‌ها استخراج و با یک کلیک خط تولید خودکار استارت شود.
+              آدرس مستقیم صفحه دوره را وارد کنید تا پارت‌ها استخراج شوند.
             </p>
           </div>
 
@@ -667,28 +972,6 @@ export default function MissionControlAdminPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-xs">
-                    <span className="text-slate-400 px-2">گوینده:</span>
-                    <button
-                      type="button"
-                      onClick={() => setIngestVoice("male")}
-                      className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                        ingestVoice === "male" ? "bg-cyan-500 text-slate-950" : "text-slate-400"
-                      }`}
-                    >
-                      مرد
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIngestVoice("female")}
-                      className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                        ingestVoice === "female" ? "bg-cyan-500 text-slate-950" : "text-slate-400"
-                      }`}
-                    >
-                      زن
-                    </button>
-                  </div>
-
                   <button
                     type="button"
                     onClick={handleStartIngestion}
@@ -725,11 +1008,11 @@ export default function MissionControlAdminPage() {
                 لیست دوره‌های موجود ({courses.length})
               </h2>
               <button
-                onClick={() => setActiveTab("ingestion")}
+                onClick={() => setActiveTab("harvester")}
                 className="py-1.5 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>دوره جدید</span>
+                <span>کشف خودکار دوره</span>
               </button>
             </div>
 
@@ -917,7 +1200,7 @@ export default function MissionControlAdminPage() {
             </div>
 
             {/* Create Article Form */}
-            <form onSubmit={handleCreateArticle} className="p-6 rounded-2xl bg-slate-950 border border-slate-850 space-y-4 text-xs">
+            <form onSubmit={handleCreateArticle} className="p-6 rounded-2xl bg-slate-950 border border-slate-855 space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-300">عنوان مقاله</label>

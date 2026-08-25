@@ -86,6 +86,22 @@ model IngestionBatch {
   updatedAt         DateTime    @updatedAt
 }
 
+model DiscoveredCourse {
+  id              String      @id @default(uuid())
+  url             String      @unique
+  slug            String
+  titleFa         String
+  titleEn         String
+  instructor      String?     @default("مدرس بین‌المللی")
+  thumbnailUrl    String?     @default("https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=800&auto=format&fit=crop&q=80")
+  category        String      @default("برنامه‌نویسی و DevOps")
+  totalParts      Int         @default(1)
+  rarLinksJson    String      @default("[]")
+  status          String      @default("DISCOVERED") // DISCOVERED, APPROVED, PROCESSING, DUBBED, REJECTED
+  discoveredAt    DateTime    @default(now())
+  approvedAt      DateTime?
+}
+
 model User {
   id              String      @id @default(uuid())
   email           String      @unique
