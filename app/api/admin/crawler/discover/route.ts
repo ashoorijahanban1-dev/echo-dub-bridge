@@ -1,18 +1,36 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&#8211;/g, "–")
+    .replace(/&#8212;/g, "—")
+    .replace(/&#038;/g, "&")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+}
+
 export async function POST(request: Request) {
   try {
-    const { categoryUrl, keyword } = await request.json();
-
-    // Default target: Downloadly video tutorials main feed or custom keyword search
-    let targetUrl = categoryUrl || "https://downloadly.ir/elearning/video-tutorials/";
-    if (keyword && keyword.trim()) {
-      targetUrl = `https://downloadly.ir/?s=${encodeURIComponent(keyword.trim())}`;
+    let keyword = "udemy";
+    try {
+      const body = await request.json();
+      if (body?.keyword && body.keyword.trim()) {
+        keyword = body.keyword.trim();
+      }
+    } catch {
+      // body empty, use default keyword "udemy"
     }
 
+    const targetUrl = `https://downloadly.ir/?s=${encodeURIComponent(keyword)}`;
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const res = await fetch(targetUrl, {
       headers: {
@@ -24,24 +42,34 @@ export async function POST(request: Request) {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      return NextResponse.json({ error: `دریافت فید دانلودلی با خطای ${res.status} مواجه شد.` }, { status: 400 });
+      return NextResponse.json({ error: `دریافت از دانلودلی با وضعیت ${res.status} مواجه شد.` }, { status: 400 });
     }
 
     const html = await res.text();
 
-    // Extract Course Articles from HTML
-    const discovered: any[] = [];
-    
-    // Regex to match article links and titles in Downloadly
-    const articleRegex = /<article[^>]*>[\s\S]*?<a\s+[^>]*href=["'](https?:\/\/downloadly\.ir\/elearning\/[^"']+)["'][^>]*>(.*?)<\/a>[\s\S]*?<\/article>/gi;
+    // Extract all course links and titles
+    const linkRegex = /<a\s+[^>]*href=["'](https?:\/\/downloadly\.ir\/elearning\/[^"']+)["'][^>]*>(.*?)<\/a>/gi;
     let match;
+    const discoveredList: any[] = [];
+    const seenUrls = new Set<string>();
 
-    while ((match = articleRegex.exec(html)) !== null) {
+    while ((match = linkRegex.exec(html)) !== null) {
       const courseUrl = match[1];
-      let rawTitle = match[2].replace(/<[^>]+>/g, "").trim();
-      
-      if (!rawTitle || rawTitle.includes("ادامه مطلب") || rawTitle.includes("دیدگاه")) continue;
-      
+      const rawTitle = decodeHtmlEntities(match[2]);
+
+      if (
+        !rawTitle || 
+        rawTitle.length < 6 || 
+        rawTitle.includes("ادامه") || 
+        rawTitle.includes("دیدگاه") || 
+        rawTitle.includes("صفحه") ||
+        seenUrls.has(courseUrl)
+      ) {
+        continue;
+      }
+
+      seenUrls.add(courseUrl);
+
       // Clean title
       const titleFa = rawTitle.replace(/^دانلود\s+/i, "").replace(/\s+-\s+دانلود رایگان.*/i, "").trim();
       const urlParts = courseUrl.split("/").filter(Boolean);
@@ -49,12 +77,15 @@ export async function POST(request: Request) {
 
       // Estimate category
       let category = "برنامه‌نویسی و DevOps";
-      if (titleFa.toLowerCase().includes("python") || titleFa.toLowerCase().includes("django") || titleFa.toLowerCase().includes("fastapi")) {
+      const lower = titleFa.toLowerCase();
+      if (lower.includes("python") || lower.includes("django") || lower.includes("fastapi") || lower.includes("backend") || lower.includes("node") || lower.includes("java")) {
         category = "بک‌اند و پایتون";
-      } else if (titleFa.toLowerCase().includes("react") || titleFa.toLowerCase().includes("next") || titleFa.toLowerCase().includes("vue") || titleFa.toLowerCase().includes("frontend")) {
+      } else if (lower.includes("react") || lower.includes("next") || lower.includes("vue") || lower.includes("frontend") || lower.includes("css") || lower.includes("tailwind")) {
         category = "فرانت‌اند و وب";
-      } else if (titleFa.toLowerCase().includes("ai") || titleFa.toLowerCase().includes("gpt") || titleFa.toLowerCase().includes("machine learning")) {
+      } else if (lower.includes("ai") || lower.includes("chatgpt") || lower.includes("langchain") || lower.includes("rag") || lower.includes("machine learning") || lower.includes("generative")) {
         category = "هوش مصنوعی و داده";
+      } else if (lower.includes("docker") || lower.includes("kubernetes") || lower.includes("cloud") || lower.includes("aws") || lower.includes("ci/cd") || lower.includes("devops")) {
+        category = "دواپس و کلود";
       }
 
       // Check if already in Courses or DiscoveredCourses
@@ -72,50 +103,21 @@ export async function POST(request: Request) {
           slug,
           titleFa,
           titleEn: titleFa,
-          instructor: "مدرس بین‌المللی",
+          instructor: "مدرس بین‌المللی Udemy",
           category,
-          totalParts: 2,
+          totalParts: 3,
           thumbnailUrl: "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=800&auto=format&fit=crop&q=80",
           status
         }
       });
 
-      discovered.push(item);
-    }
-
-    // If regex was too strict on layout, fallback with link pattern
-    if (discovered.length === 0) {
-      const simpleLinkRegex = /<a\s+[^>]*href=["'](https?:\/\/downloadly\.ir\/elearning\/video-tutorials\/[^"']+)["'][^>]*>(.*?)<\/a>/gi;
-      while ((match = simpleLinkRegex.exec(html)) !== null) {
-        const courseUrl = match[1];
-        let rawTitle = match[2].replace(/<[^>]+>/g, "").trim();
-        if (!rawTitle || rawTitle.length < 5 || rawTitle.includes("ادامه") || rawTitle.includes("صفحه")) continue;
-
-        const titleFa = rawTitle.replace(/^دانلود\s+/i, "").trim();
-        const urlParts = courseUrl.split("/").filter(Boolean);
-        const slug = urlParts[urlParts.length - 1];
-
-        const existingCourse = await prisma.course.findUnique({ where: { slug } });
-        const item = await prisma.discoveredCourse.upsert({
-          where: { url: courseUrl },
-          update: { titleFa },
-          create: {
-            url: courseUrl,
-            slug,
-            titleFa,
-            titleEn: titleFa,
-            category: "برنامه‌نویسی و DevOps",
-            status: existingCourse ? "DUBBED" : "DISCOVERED"
-          }
-        });
-        discovered.push(item);
-      }
+      discoveredList.push(item);
     }
 
     return NextResponse.json({
       success: true,
-      count: discovered.length,
-      discovered
+      count: discoveredList.length,
+      discovered: discoveredList
     });
 
   } catch (error: any) {
