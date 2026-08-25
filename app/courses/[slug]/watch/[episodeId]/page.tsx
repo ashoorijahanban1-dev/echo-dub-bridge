@@ -46,7 +46,7 @@ export default async function WatchEpisodePage({
     };
   }
 
-  if (!course.chapters || course.chapters.length === 0) {
+  if (!course.chapters || course.chapters.length === 0 || (course.chapters.length === 1 && (course.chapters[0].episodes?.length || 0) <= 1)) {
     course.chapters = [
       {
         id: "c1",

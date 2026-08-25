@@ -66,8 +66,8 @@ export default async function CourseDetailPage({
     };
   }
 
-  // If chapters are empty, populate rich structured chapters
-  if (!course.chapters || course.chapters.length === 0) {
+  // If chapters are empty or minimal stub, populate rich structured chapters
+  if (!course.chapters || course.chapters.length === 0 || (course.chapters.length === 1 && (course.chapters[0].episodes?.length || 0) <= 1)) {
     course.chapters = [
       {
         id: "c1",
