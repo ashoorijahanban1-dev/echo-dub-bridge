@@ -64,13 +64,17 @@ export default function VideoPlayer({
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [currentSrc, setCurrentSrc] = useState<string>(streamUrl || "/sample-video.mp4");
+  const [currentSrc, setCurrentSrc] = useState<string>(streamUrl || "/api/stream/video");
   const [hasStreamError, setHasStreamError] = useState(false);
 
   useEffect(() => {
-    // If streamUrl is empty, relative API, or blocked Google storage, use domestic sample
-    if (!streamUrl || streamUrl.includes("commondatastorage.googleapis.com")) {
-      setCurrentSrc("/sample-video.mp4");
+    // If streamUrl is empty, relative sample, or blocked Google storage, use local HTTP 206 stream
+    if (
+      !streamUrl ||
+      streamUrl.includes("commondatastorage.googleapis.com") ||
+      streamUrl === "/sample-video.mp4"
+    ) {
+      setCurrentSrc("/api/stream/video");
     } else {
       setCurrentSrc(streamUrl);
     }
@@ -79,8 +83,8 @@ export default function VideoPlayer({
 
   const handleVideoError = () => {
     console.warn("Video stream load error from:", currentSrc, "- switching to domestic fallback stream");
-    if (currentSrc !== "/sample-video.mp4") {
-      setCurrentSrc("/sample-video.mp4");
+    if (currentSrc !== "/api/stream/video") {
+      setCurrentSrc("/api/stream/video");
       setHasStreamError(true);
       if (videoRef.current) {
         videoRef.current.load();

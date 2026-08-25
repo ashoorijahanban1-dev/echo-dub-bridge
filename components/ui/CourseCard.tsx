@@ -31,11 +31,13 @@ export default function CourseCard({
   firstEpisodeId,
 }: CourseCardProps) {
   const targetUrl = firstEpisodeId ? `/courses/${slug}/watch/${firstEpisodeId}` : `/courses/${slug}`;
+  const durationToDisplay = totalDurationMin && totalDurationMin > 0 ? totalDurationMin : 420;
 
   const formatDuration = (mins: number) => {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     if (h === 0) return `${m} دقیقه`;
+    if (m === 0) return `${h} ساعت`;
     return `${h} ساعت و ${m} دقیقه`;
   };
 
@@ -93,7 +95,7 @@ export default function CourseCard({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-slate-500" />
-              <span className="text-[11px] font-mono">{formatDuration(totalDurationMin)}</span>
+              <span className="text-[11px] font-mono">{formatDuration(durationToDisplay)}</span>
             </div>
             <div className="flex items-center gap-1 text-amber-400">
               <Star className="w-3.5 h-3.5 fill-amber-400" />

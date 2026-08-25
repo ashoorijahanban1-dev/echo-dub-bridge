@@ -58,7 +58,7 @@ export default async function WatchEpisodePage({
             titleEn: "01 - Introduction and Learning Roadmap",
             episodeNumber: 1,
             durationSeconds: 480,
-            streamUrl: "/sample-video.mp4",
+            streamUrl: "/api/stream/video",
             isFreePreview: true,
           },
           {
@@ -67,7 +67,7 @@ export default async function WatchEpisodePage({
             titleEn: "02 - Environment Setup & First Hands-on Project",
             episodeNumber: 2,
             durationSeconds: 650,
-            streamUrl: "/sample-video.mp4",
+            streamUrl: "/api/stream/video",
             isFreePreview: true,
           },
           {
@@ -76,7 +76,7 @@ export default async function WatchEpisodePage({
             titleEn: "03 - Core Architecture and Deep Dive",
             episodeNumber: 3,
             durationSeconds: 780,
-            streamUrl: "/sample-video.mp4",
+            streamUrl: "/api/stream/video",
             isFreePreview: false,
           }
         ],
@@ -91,7 +91,7 @@ export default async function WatchEpisodePage({
             titleEn: "04 - Data Flow & Real-World Optimization",
             episodeNumber: 4,
             durationSeconds: 840,
-            streamUrl: "/sample-video.mp4",
+            streamUrl: "/api/stream/video",
             isFreePreview: false,
           },
           {
@@ -100,7 +100,7 @@ export default async function WatchEpisodePage({
             titleEn: "05 - Cloud Deployment & Security",
             episodeNumber: 5,
             durationSeconds: 920,
-            streamUrl: "/sample-video.mp4",
+            streamUrl: "/api/stream/video",
             isFreePreview: false,
           }
         ]
@@ -123,14 +123,18 @@ export default async function WatchEpisodePage({
       id: episodeId,
       titleFa: "جلسه اول: آموزش تخصصی و مقدمات",
       titleEn: "Episode 1: Core Concepts",
-      streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      streamUrl: "/api/stream/video",
       durationSeconds: 480,
     };
   }
 
-  // Ensure streamUrl is valid
-  if (!currentEpisode.streamUrl || currentEpisode.streamUrl.startsWith("/api/stream/")) {
-    currentEpisode.streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+  // Ensure streamUrl is resilient and uses local /api/stream/video
+  if (
+    !currentEpisode.streamUrl ||
+    currentEpisode.streamUrl.includes("commondatastorage.googleapis.com") ||
+    currentEpisode.streamUrl === "/sample-video.mp4"
+  ) {
+    currentEpisode.streamUrl = "/api/stream/video";
   }
 
   return (
