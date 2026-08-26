@@ -23,6 +23,7 @@ export function decodeHtmlEntities(str: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
+    .replace(/&#\d+;/g, "")
     .replace(/<[^>]+>/g, "")
     .trim();
 }
@@ -85,7 +86,7 @@ export function fetchDownloadlyPage(url: string): Promise<{ status: number; html
 }
 
 export function parseCoursesFromHtml(html: string, pageNum: number = 1): DownloadlyCourseCard[] {
-  const linkRegex = /<a\s+[^>]*href=["'](https?:\/\/downloadly\.ir\/elearning\/[^"']+)["'][^>]*>(.*?)<\/a>/gi;
+  const linkRegex = /<a\s+[^>]*href=["'](https?:\/\/downloadly\.ir\/elearning\/[a-z0-9\-\/]+)["'][^>]*>(.*?)<\/a>/gi;
   let match;
   const courses: DownloadlyCourseCard[] = [];
   const seenUrls = new Set<string>();
@@ -96,10 +97,11 @@ export function parseCoursesFromHtml(html: string, pageNum: number = 1): Downloa
 
     if (
       !rawTitle || 
-      rawTitle.length < 6 || 
+      rawTitle.length < 8 || 
       rawTitle.includes("ادامه") || 
       rawTitle.includes("دیدگاه") || 
       rawTitle.includes("صفحه") ||
+      rawTitle.includes("آموزش‌های") ||
       seenUrls.has(courseUrl)
     ) {
       continue;
@@ -120,18 +122,23 @@ export function parseCoursesFromHtml(html: string, pageNum: number = 1): Downloa
       lower.includes("docker") || 
       lower.includes("kubernetes") ||
       lower.includes("bootcamp") ||
-      lower.includes("fullstack")
+      lower.includes("fullstack") ||
+      lower.includes("vibe")
     );
 
     let category = "برنامه‌نویسی و DevOps";
-    if (lower.includes("python") || lower.includes("django") || lower.includes("fastapi") || lower.includes("backend")) {
-      category = "بک‌اند و پایتون";
-    } else if (lower.includes("react") || lower.includes("next") || lower.includes("vue") || lower.includes("frontend")) {
-      category = "فرانت‌اند و وب";
-    } else if (lower.includes("ai") || lower.includes("chatgpt") || lower.includes("langchain") || lower.includes("rag") || lower.includes("machine learning")) {
-      category = "هوش مصنوعی و داده";
-    } else if (lower.includes("docker") || lower.includes("kubernetes") || lower.includes("cloud") || lower.includes("ci/cd") || lower.includes("devops")) {
-      category = "دواپس و کلود";
+    if (lower.includes("python") || lower.includes("django") || lower.includes("fastapi") || lower.includes("backend") || lower.includes("laravel")) {
+      category = "بک‌اند و توسعه وب";
+    } else if (lower.includes("react") || lower.includes("next") || lower.includes("vue") || lower.includes("angular") || lower.includes("frontend")) {
+      category = "فرانت‌اند و جاوااسکریپت";
+    } else if (lower.includes("ai") || lower.includes("chatgpt") || lower.includes("langchain") || lower.includes("rag") || lower.includes("machine learning") || lower.includes("data")) {
+      category = "هوش مصنوعی و یادگیری ماشین";
+    } else if (lower.includes("docker") || lower.includes("kubernetes") || lower.includes("cloud") || lower.includes("azure") || lower.includes("ci/cd") || lower.includes("devops")) {
+      category = "دواپس، کلود و کانتینر";
+    } else if (lower.includes("crypto") || lower.includes("trading") || lower.includes("finance")) {
+      category = "مالی و ارز دیجیتال";
+    } else if (lower.includes("design") || lower.includes("graphic") || lower.includes("photoshop")) {
+      category = "طراحی و گرافیک";
     }
 
     courses.push({
@@ -139,67 +146,13 @@ export function parseCoursesFromHtml(html: string, pageNum: number = 1): Downloa
       slug,
       titleFa,
       titleEn: titleFa,
-      instructor: "مدرس بین‌المللی Udemy",
+      instructor: "مدرس بین‌المللی Udemy / Coursera",
       category,
       totalParts: 3,
-      thumbnailUrl: "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=800&auto=format&fit=crop&q=80",
+      thumbnailUrl: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
       isHot,
       sourcePage: pageNum
     });
-  }
-
-  // Curated Fallback if Downloadly was completely blocked
-  if (courses.length === 0) {
-    return [
-      {
-        url: "https://downloadly.ir/elearning/video-tutorials/complete-generative-ai-bootcamp-2026-langchain-agents-rag/",
-        slug: "complete-generative-ai-bootcamp-2026-langchain-agents-rag",
-        titleFa: "Udemy – Complete Generative AI Bootcamp 2026: LangChain, Agents, RAG",
-        titleEn: "Complete Generative AI Bootcamp 2026: LangChain, Agents, RAG",
-        instructor: "Dr. Angela Yu / AI Master",
-        category: "هوش مصنوعی و داده",
-        totalParts: 4,
-        thumbnailUrl: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&auto=format&fit=crop&q=80",
-        isHot: true,
-        sourcePage: pageNum
-      },
-      {
-        url: "https://downloadly.ir/elearning/video-tutorials/kubernetes-visual-cookbook-solve-build-scale-in-minutes/",
-        slug: "kubernetes-visual-cookbook-solve-build-scale-in-minutes",
-        titleFa: "Udemy – Kubernetes Visual Cookbook: Solve, Build, Scale in Minutes 2026",
-        titleEn: "Kubernetes Visual Cookbook 2026",
-        instructor: "Mumshad Mannambeth",
-        category: "دواپس و کلود",
-        totalParts: 3,
-        thumbnailUrl: "https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=800&auto=format&fit=crop&q=80",
-        isHot: true,
-        sourcePage: pageNum
-      },
-      {
-        url: "https://downloadly.ir/elearning/video-tutorials/react-fullstack-bootcamp-build-job-portal-marketplace-app/",
-        slug: "react-fullstack-bootcamp-build-job-portal-marketplace-app",
-        titleFa: "Udemy – React Fullstack Bootcamp - Build Job Portal & Marketplace App 2026",
-        titleEn: "React Fullstack Bootcamp 2026",
-        instructor: "Maximilian Schwarzmüller",
-        category: "فرانت‌اند و وب",
-        totalParts: 3,
-        thumbnailUrl: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&auto=format&fit=crop&q=80",
-        isHot: true,
-        sourcePage: pageNum
-      },
-      {
-        url: "https://downloadly.ir/elearning/video-tutorials/ci-cd-with-databricks-declarative-automation-bundles/",
-        slug: "ci-cd-with-databricks-declarative-automation-bundles",
-        titleFa: "Udemy – CI/CD with Databricks (Declarative Automation Bundles) 2026",
-        titleEn: "CI/CD with Databricks",
-        instructor: "Stephane Maarek",
-        category: "دواپس و کلود",
-        totalParts: 2,
-        thumbnailUrl: "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=800&auto=format&fit=crop&q=80",
-        isHot: true,
-        sourcePage: pageNum
-      }
-    ];
   }
 
   return courses;

@@ -86,17 +86,21 @@ export async function POST(request: Request) {
     const currentPage = page || 1;
     const limit = maxItems || 10;
 
-    let targetUrl = `https://downloadly.ir/?s=${encodeURIComponent(keyword && keyword.trim() ? keyword.trim() : "udemy")}`;
-    if (currentMode === "DEEP_ARCHIVE") {
-      targetUrl = `https://downloadly.ir/page/${currentPage}/?s=${encodeURIComponent(keyword && keyword.trim() ? keyword.trim() : "udemy")}`;
+    let targetUrl = "https://downloadly.ir/download/elearning/video-tutorials/";
+    if (keyword && keyword.trim() && keyword.trim() !== "udemy") {
+      targetUrl = `https://downloadly.ir/?s=${encodeURIComponent(keyword.trim())}`;
+    } else if (currentMode === "DEEP_ARCHIVE" && currentPage > 1) {
+      targetUrl = `https://downloadly.ir/download/elearning/video-tutorials/page/${currentPage}/`;
     }
 
     let parsedCourses: any[] = [];
 
     try {
+      console.log(`[AutoSync] Fetching Downloadly page: ${targetUrl}`);
       const res = await fetchDownloadlyPage(targetUrl);
       if (res && res.html) {
         parsedCourses = parseCoursesFromHtml(res.html, currentPage);
+        console.log(`[AutoSync] Extracted ${parsedCourses.length} courses from live feed`);
       }
     } catch (netErr: any) {
       console.warn("Auto-sync live fetch warning:", netErr.message);

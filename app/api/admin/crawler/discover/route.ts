@@ -104,10 +104,15 @@ export async function POST(request: Request) {
     let parsedCourses: any[] = [];
 
     try {
-      const targetUrl = `https://downloadly.ir/?s=${encodeURIComponent(keyword)}`;
+      const targetUrl = keyword && keyword !== "udemy" && keyword !== ""
+        ? `https://downloadly.ir/?s=${encodeURIComponent(keyword)}`
+        : "https://downloadly.ir/download/elearning/video-tutorials/";
+      
+      console.log(`[Discover] Crawling live Downloadly feed: ${targetUrl}`);
       const res = await fetchDownloadlyPage(targetUrl);
       if (res && res.html) {
         parsedCourses = parseCoursesFromHtml(res.html, 1);
+        console.log(`[Discover] Successfully extracted ${parsedCourses.length} courses from live feed`);
       }
     } catch (netErr: any) {
       console.warn("Live downloadly crawl warning:", netErr.message);
