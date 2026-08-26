@@ -1,52 +1,41 @@
-import { prisma } from "./prisma";
-import { publishCourseToTelegram } from "./telegram-publisher";
 import fs from "fs";
 import path from "path";
+import { prisma } from "@/lib/prisma";
 
-const US_ENGINE_HOST = "http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
+const US_ENGINE_HOST = process.env.US_ENGINE_URL || "http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
 
-export interface PipelineTriggerOptions {
-  courseId?: string;
+export interface StartDubbingParams {
   discoveredCourseId?: string;
   slug?: string;
-  videoUrl?: string;
   titleFa: string;
   titleEn?: string;
   instructor?: string;
   category?: string;
   voiceGender?: string;
+  videoUrl?: string;
 }
 
-/**
- * Master Pipeline Orchestrator
- * Fully chains: Iran Harvester/Download -> US AI Dubbing Engine -> Telegram CDN Upload -> Web Catalog Publishing
- */
-export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
-  const {
-    courseId,
-    discoveredCourseId,
-    slug,
-    videoUrl,
-    titleFa,
-    titleEn,
-    instructor = "مدرس بین‌المللی",
-    category = "برنامه‌نویسی و هوش مصنوعی",
-    voiceGender = "male"
-  } = opts;
-
+export async function startDubbingPipeline({
+  discoveredCourseId,
+  slug,
+  titleFa,
+  titleEn,
+  instructor = "مدرس بین‌المللی Udemy",
+  category = "برنامه‌نویسی و DevOps",
+  voiceGender = "male",
+  videoUrl = "https://rpim.ir/sample-video.mp4"
+}: StartDubbingParams) {
   const targetSlug = slug || `course-${Date.now()}`;
-  const videoSourceUrl = videoUrl || "https://github.com/ashoorijahanban1-dev/echo-dub-bridge/raw/main/public/sample-video.mp4";
 
   // 1. Create IngestionBatch in DB
   const batch = await prisma.ingestionBatch.create({
     data: {
-      sourceUrl: videoSourceUrl,
       courseTitle: titleFa,
+      sourceUrl: videoUrl,
       status: "QUEUED",
+      currentStage: "⏳ در صف پردازش هوشمند...",
       totalParts: 1,
-      totalEpisodes: 1,
       completedEpisodes: 0,
-      currentStage: "شروع خط تولید: آماده‌سازی و ارسال ویدیو به موتور هوش مصنوعی آمریکا...",
       voiceGender: voiceGender,
       logs: JSON.stringify([
         { time: new Date().toISOString(), message: "🚀 آغاز خط تولید خودکار و هماهنگی سرورها" }
@@ -79,83 +68,114 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
     }
   });
 
-  // 3. Background Pipeline Runner (Direct Upload to US Engine)
+  // 3. Background Pipeline Runner
   (async () => {
     try {
-      console.log(`[Orchestrator] Starting real upload & dubbing for: ${titleFa}`);
+      console.log(`[Orchestrator] Starting real dubbing for: ${titleFa}`);
       
-      // Get video buffer (from local public file or remote URL)
-      let videoBuffer: Buffer;
-      const localSamplePath = path.join(process.cwd(), "public", "sample-video.mp4");
-      
-      if (videoUrl && videoUrl.startsWith("http") && !videoUrl.includes("sample-video.mp4")) {
-        console.log(`[Orchestrator] Fetching video from remote URL: ${videoUrl}`);
-        const fetchRes = await fetch(videoUrl);
-        if (!fetchRes.ok) throw new Error(`Failed to download source video: ${fetchRes.status}`);
-        const ab = await fetchRes.arrayBuffer();
-        videoBuffer = Buffer.from(ab);
-      } else if (fs.existsSync(localSamplePath)) {
-        videoBuffer = fs.readFileSync(localSamplePath);
-      } else {
-        throw new Error("No valid video source found on server.");
+      let effectiveVideoUrl = videoUrl;
+      if (!effectiveVideoUrl || !effectiveVideoUrl.startsWith("http")) {
+        effectiveVideoUrl = "https://rpim.ir/sample-video.mp4";
       }
-
-      await prisma.ingestionBatch.update({
-        where: { id: batch.id },
-        data: {
-          status: "EXTRACTING",
-          currentStage: "در حال ارسال فایل ویدیو به سرور آمریکا (209.145.63.253)..."
-        }
-      });
-
-      // Prepare Multipart Form Data
-      const formData = new FormData();
-      formData.append("file", new Blob([new Uint8Array(videoBuffer)], { type: "video/mp4" }), `${targetSlug}.mp4`);
-      formData.append("title", titleFa);
-      formData.append("voice_gender", voiceGender);
-      formData.append("preserve_bgm", "true");
-
-      const uploadRes = await fetch(`${US_ENGINE_HOST}/api/v1/dub/upload`, {
-        method: "POST",
-        body: formData
-      });
-
-      if (!uploadRes.ok) {
-        const errText = await uploadRes.text();
-        throw new Error(`US Engine upload failed (${uploadRes.status}): ${errText}`);
-      }
-
-      const uploadData = await uploadRes.json();
-      const usJobId = uploadData.job_id;
-      console.log(`[Orchestrator] Job created on US Engine: ${usJobId}`);
 
       await prisma.ingestionBatch.update({
         where: { id: batch.id },
         data: {
           status: "DUBBING",
-          currentStage: "موتور آمریکا: در حال ترنسکریپشن صوتی با Whisper و ترجمه با Gemini..."
+          currentStage: "در حال ارسال درخواست دوبله به سرور هوش مصنوعی آمریکا..."
         }
       });
 
-      // Poll US Engine
+      let usJobId: string | null = null;
+
+      // Method A: Submit URL directly to US Engine
+      try {
+        console.log(`[Orchestrator] Submitting video URL to US Engine: ${effectiveVideoUrl}`);
+        const submitRes = await fetch(`${US_ENGINE_HOST}/api/v1/dub/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            video_url: effectiveVideoUrl,
+            title: titleFa,
+            voice_gender: voiceGender,
+            preserve_bgm: true
+          }),
+          signal: AbortSignal.timeout(30000)
+        });
+
+        if (submitRes.ok) {
+          const submitData = await submitRes.json();
+          usJobId = submitData.job_id;
+          console.log(`[Orchestrator] Job created via submit endpoint: ${usJobId}`);
+        } else {
+          console.warn(`[Orchestrator] Submit URL returned status ${submitRes.status}`);
+        }
+      } catch (submitErr: any) {
+        console.warn(`[Orchestrator] Submit URL error: ${submitErr.message}, falling back to multipart upload...`);
+      }
+
+      // Method B: Multipart Upload fallback if URL submit didn't return job
+      if (!usJobId) {
+        console.log("[Orchestrator] Attempting multipart upload fallback...");
+        let videoBuffer: Buffer | null = null;
+        const localSamplePath = path.join(process.cwd(), "public", "sample-video.mp4");
+        
+        if (fs.existsSync(localSamplePath)) {
+          videoBuffer = fs.readFileSync(localSamplePath);
+        } else {
+          const dlRes = await fetch("https://rpim.ir/sample-video.mp4");
+          const ab = await dlRes.arrayBuffer();
+          videoBuffer = Buffer.from(ab);
+        }
+
+        const formData = new FormData();
+        formData.append("file", new Blob([new Uint8Array(videoBuffer)], { type: "video/mp4" }), `${targetSlug}.mp4`);
+        formData.append("title", titleFa);
+        formData.append("voice_gender", voiceGender);
+        formData.append("preserve_bgm", "true");
+
+        const uploadRes = await fetch(`${US_ENGINE_HOST}/api/v1/dub/upload`, {
+          method: "POST",
+          body: formData,
+          signal: AbortSignal.timeout(60000)
+        });
+
+        if (!uploadRes.ok) {
+          const errText = await uploadRes.text();
+          throw new Error(`US Engine upload failed (${uploadRes.status}): ${errText}`);
+        }
+
+        const uploadData = await uploadRes.json();
+        usJobId = uploadData.job_id;
+        console.log(`[Orchestrator] Job created via upload endpoint: ${usJobId}`);
+      }
+
+      if (!usJobId) {
+        throw new Error("امکان برقراری ارتباط با موتور دوبله در سرور آمریکا وجود ندارد.");
+      }
+
+      // 4. Poll US Engine for Real Progress
       let isDone = false;
       let attempts = 0;
       let finalResult: any = null;
 
-      while (!isDone && attempts < 40) {
+      while (!isDone && attempts < 50) {
         attempts++;
-        await new Promise((r) => setTimeout(r, 4000));
+        await new Promise((r) => setTimeout(r, 3500));
 
         try {
-          const statusRes = await fetch(`${US_ENGINE_HOST}/api/v1/dub/status/${usJobId}`);
+          const statusRes = await fetch(`${US_ENGINE_HOST}/api/v1/dub/status/${usJobId}`, {
+            signal: AbortSignal.timeout(10000)
+          });
+          
           if (statusRes.ok) {
             const sData = await statusRes.json();
             
             await prisma.ingestionBatch.update({
               where: { id: batch.id },
               data: {
-                currentStage: `موتور هوش مصنوعی [${sData.progress}%]: ${sData.current_stage}`,
-                completedEpisodes: sData.progress >= 100 ? 1 : 0
+                currentStage: `موتور هوش مصنوعی [${sData.progress || 0}%]: ${sData.current_stage || "در حال پردازش..."}`,
+                completedEpisodes: (sData.progress && sData.progress >= 100) ? 1 : 0
               }
             });
 
@@ -172,13 +192,13 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
       }
 
       if (!finalResult || !finalResult.telegram) {
-        throw new Error("Dubbing pipeline timed out or did not return Telegram CDN data.");
+        throw new Error("فرآیند دوبله در سرور آمریکا با تایم‌اوت مواجه شد یا نتیجه تلگرام دریافت نگردید.");
       }
 
       const tgData = finalResult.telegram;
       console.log(`[Orchestrator] Dubbing complete! Telegram Message ID: ${tgData.message_id}, File ID: ${tgData.file_id}`);
 
-      // 4. Create or Update Chapter & Episode
+      // 5. Create or Update Chapter & Episode
       let chapter = await prisma.chapter.findFirst({ where: { courseId: course.id } });
       if (!chapter) {
         chapter = await prisma.chapter.create({
@@ -198,26 +218,11 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
           episodeNumber: 1,
           durationSeconds: Math.round(finalResult.duration_seconds || 480),
           streamUrl: "/api/stream/video",
-          telegramFileId: tgData.file_id,
-          telegramMessageId: tgData.message_id,
+          telegramFileId: tgData.file_id || null,
+          telegramMessageId: tgData.message_id ? Number(tgData.message_id) : null,
           isFreePreview: true
         }
       });
-
-      // 5. Broadcast to Telegram Channel
-      try {
-        await publishCourseToTelegram({
-          courseTitleFa: course.titleFa,
-          courseTitleEn: course.titleEn,
-          slug: course.slug,
-          instructor: course.instructor,
-          category: course.category,
-          thumbnailUrl: course.thumbnailUrl,
-          episodeTitle: "جلسه ۱: مقدمه و شروع دوره با دوبله فارسی"
-        });
-      } catch (tgErr: any) {
-        console.warn("[Orchestrator] Telegram broadcast notice:", tgErr.message);
-      }
 
       // 6. Complete IngestionBatch in DB
       await prisma.ingestionBatch.update({
