@@ -1,8 +1,5 @@
-import fs from "fs";
-import path from "path";
 import { prisma } from "@/lib/prisma";
-
-const US_ENGINE_HOST = process.env.US_ENGINE_URL || "http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
+import { submitDubbingJobDirect, getDubbingJobStatusDirect } from "@/lib/us-engine-client";
 
 export interface StartDubbingParams {
   discoveredCourseId?: string;
@@ -68,7 +65,7 @@ export async function startDubbingPipeline({
     }
   });
 
-  // 3. Background Pipeline Runner
+  // 3. Background Pipeline Runner (Direct IP Connection to US Server 209.145.63.253)
   (async () => {
     try {
       console.log(`[Orchestrator] Starting real dubbing for: ${titleFa}`);
@@ -82,109 +79,47 @@ export async function startDubbingPipeline({
         where: { id: batch.id },
         data: {
           status: "DUBBING",
-          currentStage: "در حال ارسال درخواست دوبله به سرور هوش مصنوعی آمریکا..."
+          currentStage: "در حال اتصال به سرور هوش مصنوعی آمریکا (209.145.63.253)..."
         }
       });
 
-      let usJobId: string | null = null;
+      // Submit directly via raw TCP/HTTP to US Engine IP
+      console.log(`[Orchestrator] Submitting job to US Engine directly: ${effectiveVideoUrl}`);
+      const submitData = await submitDubbingJobDirect({
+        video_url: effectiveVideoUrl,
+        title: titleFa,
+        voice_gender: voiceGender,
+        preserve_bgm: true
+      });
 
-      // Method A: Submit URL directly to US Engine
-      try {
-        console.log(`[Orchestrator] Submitting video URL to US Engine: ${effectiveVideoUrl}`);
-        const submitRes = await fetch(`${US_ENGINE_HOST}/api/v1/dub/submit`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            video_url: effectiveVideoUrl,
-            title: titleFa,
-            voice_gender: voiceGender,
-            preserve_bgm: true
-          }),
-          signal: AbortSignal.timeout(30000)
-        });
-
-        if (submitRes.ok) {
-          const submitData = await submitRes.json();
-          usJobId = submitData.job_id;
-          console.log(`[Orchestrator] Job created via submit endpoint: ${usJobId}`);
-        } else {
-          console.warn(`[Orchestrator] Submit URL returned status ${submitRes.status}`);
-        }
-      } catch (submitErr: any) {
-        console.warn(`[Orchestrator] Submit URL error: ${submitErr.message}, falling back to multipart upload...`);
-      }
-
-      // Method B: Multipart Upload fallback if URL submit didn't return job
-      if (!usJobId) {
-        console.log("[Orchestrator] Attempting multipart upload fallback...");
-        let videoBuffer: Buffer | null = null;
-        const localSamplePath = path.join(process.cwd(), "public", "sample-video.mp4");
-        
-        if (fs.existsSync(localSamplePath)) {
-          videoBuffer = fs.readFileSync(localSamplePath);
-        } else {
-          const dlRes = await fetch("https://rpim.ir/sample-video.mp4");
-          const ab = await dlRes.arrayBuffer();
-          videoBuffer = Buffer.from(ab);
-        }
-
-        const formData = new FormData();
-        formData.append("file", new Blob([new Uint8Array(videoBuffer)], { type: "video/mp4" }), `${targetSlug}.mp4`);
-        formData.append("title", titleFa);
-        formData.append("voice_gender", voiceGender);
-        formData.append("preserve_bgm", "true");
-
-        const uploadRes = await fetch(`${US_ENGINE_HOST}/api/v1/dub/upload`, {
-          method: "POST",
-          body: formData,
-          signal: AbortSignal.timeout(60000)
-        });
-
-        if (!uploadRes.ok) {
-          const errText = await uploadRes.text();
-          throw new Error(`US Engine upload failed (${uploadRes.status}): ${errText}`);
-        }
-
-        const uploadData = await uploadRes.json();
-        usJobId = uploadData.job_id;
-        console.log(`[Orchestrator] Job created via upload endpoint: ${usJobId}`);
-      }
-
-      if (!usJobId) {
-        throw new Error("امکان برقراری ارتباط با موتور دوبله در سرور آمریکا وجود ندارد.");
-      }
+      const usJobId = submitData.job_id;
+      console.log(`[Orchestrator] Job successfully registered on US Engine: ${usJobId}`);
 
       // 4. Poll US Engine for Real Progress
       let isDone = false;
       let attempts = 0;
       let finalResult: any = null;
 
-      while (!isDone && attempts < 50) {
+      while (!isDone && attempts < 60) {
         attempts++;
         await new Promise((r) => setTimeout(r, 3500));
 
         try {
-          const statusRes = await fetch(`${US_ENGINE_HOST}/api/v1/dub/status/${usJobId}`, {
-            signal: AbortSignal.timeout(10000)
-          });
+          const sData = await getDubbingJobStatusDirect(usJobId);
           
-          if (statusRes.ok) {
-            const sData = await statusRes.json();
-            
-            await prisma.ingestionBatch.update({
-              where: { id: batch.id },
-              data: {
-                currentStage: `موتور هوش مصنوعی [${sData.progress || 0}%]: ${sData.current_stage || "در حال پردازش..."}`,
-                completedEpisodes: (sData.progress && sData.progress >= 100) ? 1 : 0
-              }
-            });
-
-            if (sData.status === "COMPLETED") {
-              isDone = true;
-              finalResult = sData.result;
-            } else if (sData.status === "FAILED") {
-              throw new Error(sData.error || "US Engine pipeline failed.");
+          await prisma.ingestionBatch.update({
+            where: { id: batch.id },
+            data: {
+              currentStage: `موتور هوش مصنوعی [${sData.progress || 0}%]: ${sData.current_stage || "در حال پردازش..."}`,
+              completedEpisodes: (sData.progress && sData.progress >= 100) ? 1 : 0
             }
+          });
+
+          if (sData.status === "COMPLETED") {
+            isDone = true;
+            finalResult = sData.result;
+          } else if (sData.status === "FAILED") {
+            throw new Error(sData.error || "US Engine pipeline failed.");
           }
         } catch (pollErr: any) {
           console.warn("[Orchestrator] Poll warning:", pollErr.message);
