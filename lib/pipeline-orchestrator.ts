@@ -110,7 +110,7 @@ export async function startDubbingPipeline(opts: PipelineTriggerOptions) {
 
       // Prepare Multipart Form Data
       const formData = new FormData();
-      formData.append("file", new Blob([videoBuffer], { type: "video/mp4" }), `${targetSlug}.mp4`);
+      formData.append("file", new Blob([new Uint8Array(videoBuffer)], { type: "video/mp4" }), `${targetSlug}.mp4`);
       formData.append("title", titleFa);
       formData.append("voice_gender", voiceGender);
       formData.append("preserve_bgm", "true");
