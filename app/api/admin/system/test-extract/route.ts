@@ -41,8 +41,11 @@ export async function POST(request: Request) {
       logs.push(`7z e error: ${e.message}`);
     }
 
-    const extractedFiles = fs.readdirSync(outDir);
-    logs.push(`Extracted files count: ${extractedFiles.length}: ${JSON.stringify(extractedFiles)}`);
+    const extractedFiles = fs.readdirSync(outDir).map(f => ({
+      name: f,
+      size: fs.statSync(path.join(outDir, f)).size
+    }));
+    logs.push(`Extracted files count: ${extractedFiles.length}: ${JSON.stringify(extractedFiles, null, 2)}`);
 
     // Clean up
     fs.rmSync(tmpDir, { recursive: true, force: true });

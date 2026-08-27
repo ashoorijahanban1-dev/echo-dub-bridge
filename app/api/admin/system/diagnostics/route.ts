@@ -19,9 +19,9 @@ export async function GET() {
   } catch (e: any) { info.memory = e.message; }
 
   try {
-    const { stdout: zOut } = await execPromise("7z --help | head -n 3");
-    info.sevenZip = zOut;
-  } catch (e: any) { info.sevenZip = e.message; }
+    const { stdout: whichOut } = await execPromise("which unrar rar 7z 7za 7zz unar 2>&1 || true");
+    info.binaries = whichOut;
+  } catch (e: any) { info.binaries = e.message; }
 
   try {
     const testUrl = "https://dl3.downloadly.ir/Files/Elearning/Udemy_n8n_for_Beginners_Google_Workspace_Automation_with_AI_2026-5_Downloadly.ir.part1.rar";
