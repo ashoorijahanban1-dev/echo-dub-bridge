@@ -8,6 +8,7 @@ import { submitDubbingJobDirect, uploadDubbingFileDirect, getDubbingJobStatusDir
 export interface StartDubbingParams {
   discoveredCourseId?: string;
   slug?: string;
+  sourceUrl?: string;
   titleFa: string;
   titleEn?: string;
   instructor?: string;
@@ -19,6 +20,7 @@ export interface StartDubbingParams {
 export async function startDubbingPipeline({
   discoveredCourseId,
   slug,
+  sourceUrl,
   titleFa,
   titleEn,
   instructor = "مدرس بین‌المللی Udemy",
@@ -27,12 +29,13 @@ export async function startDubbingPipeline({
   videoUrl
 }: StartDubbingParams) {
   const targetSlug = slug || `course-${Date.now()}`;
+  const effectiveSourceUrl = sourceUrl || videoUrl || `https://downloadly.ir/download/elearning/video-tutorials/${targetSlug}/`;
 
   // 1. Create IngestionBatch in DB
   const batch = await prisma.ingestionBatch.create({
     data: {
       courseTitle: titleFa,
-      sourceUrl: videoUrl || `https://downloadly.ir/elearning/video-tutorials/${targetSlug}/`,
+      sourceUrl: effectiveSourceUrl,
       status: "QUEUED",
       currentStage: "⏳ در صف پردازش هوشمند و استخراج لینک‌های دانلود...",
       totalParts: 1,
@@ -79,13 +82,26 @@ export async function startDubbingPipeline({
 
       // Step A: Find RAR links on course page
       try {
-        const coursePageUrl = `https://downloadly.ir/elearning/video-tutorials/${targetSlug}/`;
-        console.log(`[Orchestrator] Fetching course page for RAR links: ${coursePageUrl}`);
-        const pageRes = await fetchDownloadlyPage(coursePageUrl);
-        
-        if (pageRes && pageRes.html) {
-          const rarLinks = extractRarLinksFromHtml(pageRes.html);
-          console.log(`[Orchestrator] Found ${rarLinks.length} RAR archive links for ${targetSlug}`);
+        const candidateUrls = [
+          sourceUrl,
+          `https://downloadly.ir/download/elearning/video-tutorials/${targetSlug}/`,
+          `https://downloadly.ir/elearning/video-tutorials/${targetSlug}/`,
+          `https://downloadly.ir/download/elearning/${targetSlug}/`
+        ].filter(Boolean) as string[];
+
+        let rarLinks: string[] = [];
+        for (const cUrl of candidateUrls) {
+          console.log(`[Orchestrator] Fetching course page candidate: ${cUrl}`);
+          const pageRes = await fetchDownloadlyPage(cUrl);
+          if (pageRes && pageRes.html) {
+            const found = extractRarLinksFromHtml(pageRes.html);
+            if (found.length > 0) {
+              rarLinks = found;
+              console.log(`[Orchestrator] Successfully found ${rarLinks.length} RAR archive links at ${cUrl}`);
+              break;
+            }
+          }
+        }
           
           if (rarLinks.length > 0) {
             await prisma.ingestionBatch.update({
@@ -123,7 +139,6 @@ export async function startDubbingPipeline({
               console.log(`[Orchestrator] Selected real lecture video: ${realExtractedVideoPath}`);
             }
           }
-        }
       } catch (dlErr: any) {
         console.warn(`[Orchestrator] Real RAR download/extraction warning: ${dlErr.message}`);
       }

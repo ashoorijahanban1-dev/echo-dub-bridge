@@ -58,6 +58,7 @@ export async function PATCH(request: Request) {
         const pipelineResult = await startDubbingPipeline({
           discoveredCourseId: disc.id,
           slug: disc.slug,
+          sourceUrl: disc.url,
           titleFa: disc.titleFa,
           titleEn: disc.titleEn,
           instructor: disc.instructor,
