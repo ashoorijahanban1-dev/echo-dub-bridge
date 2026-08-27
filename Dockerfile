@@ -19,12 +19,9 @@ RUN npm run build
 FROM node:20-slim AS runner
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y openssl curl ca-certificates tar xz-utils wget && \
-    wget -qO /tmp/7z.tar.xz https://www.7-zip.org/a/7z2408-linux-x64.tar.xz && \
-    tar -xf /tmp/7z.tar.xz -C /usr/local/bin 7zz && \
-    chmod +x /usr/local/bin/7zz && \
-    ln -sf /usr/local/bin/7zz /usr/local/bin/7z && \
-    rm -f /tmp/7z.tar.xz && \
+RUN (sed -i 's/Components: main/Components: main contrib non-free non-free-firmware/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's/main/main contrib non-free/g' /etc/apt/sources.list) && \
+    apt-get update -y && \
+    apt-get install -y openssl curl p7zip-full unrar && \
     rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production

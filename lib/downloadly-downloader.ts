@@ -50,7 +50,16 @@ export async function downloadFileStream(url: string, destPath: string, timeoutS
 export async function extractRarArchive(rarFilePath: string, outputDir: string, password = "www.downloadly.ir"): Promise<string[]> {
   fs.mkdirSync(outputDir, { recursive: true });
 
-  // Try 7z extraction (allowing non-fatal volume exit codes)
+  // 1. Try official unrar (supports full RAR5, multi-part volumes, AES password)
+  try {
+    const cmdUnrar = `unrar x -p"${password}" -y -o+ "${rarFilePath}" "${outputDir}"`;
+    await execPromise(cmdUnrar);
+    console.log("[Downloader] unrar x extraction completed");
+  } catch (errUnrar: any) {
+    console.log("[Downloader] unrar non-fatal warning/exit:", errUnrar.message);
+  }
+
+  // 2. Also try 7z extraction as fallback
   try {
     const cmd7z = `7z x -p"${password}" -y -o"${outputDir}" "${rarFilePath}"`;
     await execPromise(cmd7z);
@@ -58,7 +67,7 @@ export async function extractRarArchive(rarFilePath: string, outputDir: string, 
     console.log("[Downloader] 7z non-fatal warning/exit:", err7z.message);
   }
 
-  // Also try 7z flat extract for video formats directly
+  // 3. Also try 7z flat extract for video formats directly
   try {
     const cmd7zE = `7z e -p"${password}" -y -o"${outputDir}" "${rarFilePath}" "*.mp4" "*.mkv" "*.mov" -r`;
     await execPromise(cmd7zE);
