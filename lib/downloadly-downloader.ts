@@ -78,9 +78,15 @@ export async function downloadFileStream(url: string, destPath: string, timeoutS
   } catch (e) {}
 
   // Resolve IPs for both original and target hostnames using public DNS to bypass Docker DNS limitations
-  const hostnamesToResolve = new Set<string>();
-  try { hostnamesToResolve.add(new URL(url).hostname); } catch (e) {}
-  try { hostnamesToResolve.add(new URL(targetUrl).hostname); } catch (e) {}
+  const hostnamesToResolve: string[] = [];
+  try {
+    const h1 = new URL(url).hostname;
+    if (h1 && !hostnamesToResolve.includes(h1)) hostnamesToResolve.push(h1);
+  } catch (e) {}
+  try {
+    const h2 = new URL(targetUrl).hostname;
+    if (h2 && !hostnamesToResolve.includes(h2)) hostnamesToResolve.push(h2);
+  } catch (e) {}
 
   const resolveParts: string[] = [];
   for (const host of hostnamesToResolve) {
