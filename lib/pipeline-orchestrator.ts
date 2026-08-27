@@ -146,25 +146,25 @@ export async function startDubbingPipeline({
           preserve_bgm: true
         });
         usJobId = uploadRes.job_id;
-      } else {
-        // Fallback to URL submission
+      } else if (videoUrl && videoUrl.startsWith("http")) {
         await prisma.ingestionBatch.update({
           where: { id: batch.id },
           data: {
             status: "DUBBING",
-            currentStage: "3️⃣ اتصال به سرور هوش مصنوعی آمریکا و آغاز ترنسکریپشن صوتی با Whisper..."
+            currentStage: "3️⃣ ارسال لینک مستقیم ویدیوی دوره به سرور هوش مصنوعی آمریکا..."
           }
         });
 
-        const effectiveUrl = videoUrl || "https://rpim.ir/sample-video.mp4";
-        console.log(`[Orchestrator] Submitting video URL to US Engine: ${effectiveUrl}`);
+        console.log(`[Orchestrator] Submitting direct video URL to US Engine: ${videoUrl}`);
         const submitData = await submitDubbingJobDirect({
-          video_url: effectiveUrl,
+          video_url: videoUrl,
           title: titleFa,
           voice_gender: voiceGender,
           preserve_bgm: true
         });
         usJobId = submitData.job_id;
+      } else {
+        throw new Error("فایل ویدیوی این دوره از آرشیو دانلودلی دریافت نشد و لینک مستقیم ویدیو تعیین نشده است.");
       }
 
       if (!usJobId) {
