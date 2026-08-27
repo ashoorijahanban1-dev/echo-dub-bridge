@@ -19,7 +19,7 @@ RUN npm run build
 FROM node:20-slim AS runner
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y openssl curl p7zip-full unrar-free && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3000

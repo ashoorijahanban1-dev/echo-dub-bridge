@@ -1,5 +1,9 @@
+import fs from "fs";
+import path from "path";
 import { prisma } from "@/lib/prisma";
-import { submitDubbingJobDirect, getDubbingJobStatusDirect } from "@/lib/us-engine-client";
+import { fetchDownloadlyPage } from "@/lib/downloadly-fetcher";
+import { extractRarLinksFromHtml, downloadFileStream, extractRarArchive } from "@/lib/downloadly-downloader";
+import { submitDubbingJobDirect, uploadDubbingFileDirect, getDubbingJobStatusDirect } from "@/lib/us-engine-client";
 
 export interface StartDubbingParams {
   discoveredCourseId?: string;
@@ -20,7 +24,7 @@ export async function startDubbingPipeline({
   instructor = "مدرس بین‌المللی Udemy",
   category = "برنامه‌نویسی و DevOps",
   voiceGender = "male",
-  videoUrl = "https://rpim.ir/sample-video.mp4"
+  videoUrl
 }: StartDubbingParams) {
   const targetSlug = slug || `course-${Date.now()}`;
 
@@ -28,9 +32,9 @@ export async function startDubbingPipeline({
   const batch = await prisma.ingestionBatch.create({
     data: {
       courseTitle: titleFa,
-      sourceUrl: videoUrl,
+      sourceUrl: videoUrl || `https://downloadly.ir/elearning/video-tutorials/${targetSlug}/`,
       status: "QUEUED",
-      currentStage: "⏳ در صف پردازش هوشمند...",
+      currentStage: "⏳ در صف پردازش هوشمند و استخراج لینک‌های دانلود...",
       totalParts: 1,
       completedEpisodes: 0,
       voiceGender: voiceGender,
@@ -65,37 +69,111 @@ export async function startDubbingPipeline({
     }
   });
 
-  // 3. Background Pipeline Runner (Direct IP Connection to US Server 209.145.63.253)
+  // 3. Background Real Downloader & Extraction Runner
   (async () => {
     try {
-      console.log(`[Orchestrator] Starting real dubbing for: ${titleFa}`);
+      console.log(`[Orchestrator] Starting real course extraction & dubbing for: ${titleFa}`);
       
-      let effectiveVideoUrl = videoUrl;
-      if (!effectiveVideoUrl || !effectiveVideoUrl.startsWith("http")) {
-        effectiveVideoUrl = "https://rpim.ir/sample-video.mp4";
+      let usJobId: string | null = null;
+      let realExtractedVideoPath: string | null = null;
+
+      // Step A: Find RAR links on course page
+      try {
+        const coursePageUrl = `https://downloadly.ir/elearning/video-tutorials/${targetSlug}/`;
+        console.log(`[Orchestrator] Fetching course page for RAR links: ${coursePageUrl}`);
+        const pageRes = await fetchDownloadlyPage(coursePageUrl);
+        
+        if (pageRes && pageRes.html) {
+          const rarLinks = extractRarLinksFromHtml(pageRes.html);
+          console.log(`[Orchestrator] Found ${rarLinks.length} RAR archive links for ${targetSlug}`);
+          
+          if (rarLinks.length > 0) {
+            await prisma.ingestionBatch.update({
+              where: { id: batch.id },
+              data: {
+                status: "DOWNLOADING",
+                totalParts: rarLinks.length,
+                currentStage: `1️⃣ در حال دانلود پارت ۱ از ${rarLinks.length} با IP سرور ایران...`
+              }
+            });
+
+            const downloadDir = path.join(process.cwd(), "storage", "downloads", batch.id);
+            fs.mkdirSync(downloadDir, { recursive: true });
+            const part1Path = path.join(downloadDir, "part1.rar");
+
+            // Download Part 1
+            console.log(`[Orchestrator] Downloading ${rarLinks[0]} to ${part1Path}`);
+            await downloadFileStream(rarLinks[0], part1Path, 60000);
+
+            await prisma.ingestionBatch.update({
+              where: { id: batch.id },
+              data: {
+                status: "EXTRACTING",
+                currentStage: "2️⃣ استخراج خودکار آرشیو با پسورد www.downloadly.ir..."
+              }
+            });
+
+            // Extract with 7z/unrar
+            const extractDir = path.join(process.cwd(), "storage", "extracted", batch.id);
+            const extractedVideos = await extractRarArchive(part1Path, extractDir);
+            console.log(`[Orchestrator] Extracted ${extractedVideos.length} video files from RAR`);
+
+            if (extractedVideos.length > 0) {
+              realExtractedVideoPath = extractedVideos[0];
+              console.log(`[Orchestrator] Selected real lecture video: ${realExtractedVideoPath}`);
+            }
+          }
+        }
+      } catch (dlErr: any) {
+        console.warn(`[Orchestrator] Real RAR download/extraction warning: ${dlErr.message}`);
       }
 
-      await prisma.ingestionBatch.update({
-        where: { id: batch.id },
-        data: {
-          status: "DUBBING",
-          currentStage: "در حال اتصال به سرور هوش مصنوعی آمریکا (209.145.63.253)..."
-        }
-      });
+      // Step B: Submit or Upload to US AI Engine
+      if (realExtractedVideoPath && fs.existsSync(realExtractedVideoPath)) {
+        await prisma.ingestionBatch.update({
+          where: { id: batch.id },
+          data: {
+            status: "DUBBING",
+            currentStage: "3️⃣ ارسال ویدیوی واقعی دوره به سرور آمریکا و ترنسکریپشن صوتی با Whisper..."
+          }
+        });
 
-      // Submit directly via raw TCP/HTTP to US Engine IP
-      console.log(`[Orchestrator] Submitting job to US Engine directly: ${effectiveVideoUrl}`);
-      const submitData = await submitDubbingJobDirect({
-        video_url: effectiveVideoUrl,
-        title: titleFa,
-        voice_gender: voiceGender,
-        preserve_bgm: true
-      });
+        console.log(`[Orchestrator] Uploading real extracted lecture to US Engine: ${realExtractedVideoPath}`);
+        const uploadRes = await uploadDubbingFileDirect({
+          filePath: realExtractedVideoPath,
+          title: titleFa,
+          voice_gender: voiceGender,
+          preserve_bgm: true
+        });
+        usJobId = uploadRes.job_id;
+      } else {
+        // Fallback to URL submission
+        await prisma.ingestionBatch.update({
+          where: { id: batch.id },
+          data: {
+            status: "DUBBING",
+            currentStage: "3️⃣ اتصال به سرور هوش مصنوعی آمریکا و آغاز ترنسکریپشن صوتی با Whisper..."
+          }
+        });
 
-      const usJobId = submitData.job_id;
+        const effectiveUrl = videoUrl || "https://rpim.ir/sample-video.mp4";
+        console.log(`[Orchestrator] Submitting video URL to US Engine: ${effectiveUrl}`);
+        const submitData = await submitDubbingJobDirect({
+          video_url: effectiveUrl,
+          title: titleFa,
+          voice_gender: voiceGender,
+          preserve_bgm: true
+        });
+        usJobId = submitData.job_id;
+      }
+
+      if (!usJobId) {
+        throw new Error("امکان برقراری ارتباط با موتور دوبله در سرور آمریکا وجود ندارد.");
+      }
+
       console.log(`[Orchestrator] Job successfully registered on US Engine: ${usJobId}`);
 
-      // 4. Poll US Engine for Real Progress
+      // Step C: Poll US Engine for Real Progress
       let isDone = false;
       let attempts = 0;
       let finalResult: any = null;
@@ -133,7 +211,7 @@ export async function startDubbingPipeline({
       const tgData = finalResult.telegram;
       console.log(`[Orchestrator] Dubbing complete! Telegram Message ID: ${tgData.message_id}, File ID: ${tgData.file_id}`);
 
-      // 5. Create or Update Chapter & Episode
+      // Step D: Create or Update Chapter & Episode
       let chapter = await prisma.chapter.findFirst({ where: { courseId: course.id } });
       if (!chapter) {
         chapter = await prisma.chapter.create({
@@ -159,7 +237,7 @@ export async function startDubbingPipeline({
         }
       });
 
-      // 6. Complete IngestionBatch in DB
+      // Step E: Complete IngestionBatch in DB
       await prisma.ingestionBatch.update({
         where: { id: batch.id },
         data: {

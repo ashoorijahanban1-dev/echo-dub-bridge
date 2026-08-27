@@ -1,4 +1,6 @@
 import http from "http";
+import fs from "fs";
+import path from "path";
 
 const US_ENGINE_IP = "209.145.63.253";
 const US_ENGINE_HOST_HEADER = "75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
@@ -59,6 +61,83 @@ export async function submitDubbingJobDirect(params: SubmitJobParams): Promise<{
 
     req.write(payload);
     req.end();
+  });
+}
+
+export async function uploadDubbingFileDirect({
+  filePath,
+  title,
+  voice_gender = "male",
+  preserve_bgm = true
+}: {
+  filePath: string;
+  title: string;
+  voice_gender?: string;
+  preserve_bgm?: boolean;
+}): Promise<{ job_id: string; status: string }> {
+  return new Promise((resolve, reject) => {
+    const boundary = `----WebKitFormBoundary${Date.now().toString(16)}`;
+    const filename = path.basename(filePath);
+    const fileStream = fs.createReadStream(filePath);
+    const stats = fs.statSync(filePath);
+
+    let header = `--${boundary}\r\n`;
+    header += `Content-Disposition: form-data; name="title"\r\n\r\n${title}\r\n`;
+    header += `--${boundary}\r\n`;
+    header += `Content-Disposition: form-data; name="voice_gender"\r\n\r\n${voice_gender}\r\n`;
+    header += `--${boundary}\r\n`;
+    header += `Content-Disposition: form-data; name="preserve_bgm"\r\n\r\n${preserve_bgm}\r\n`;
+    header += `--${boundary}\r\n`;
+    header += `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`;
+    header += `Content-Type: video/mp4\r\n\r\n`;
+
+    const footer = `\r\n--${boundary}--\r\n`;
+    const totalLength = Buffer.byteLength(header) + stats.size + Buffer.byteLength(footer);
+
+    const options: http.RequestOptions = {
+      hostname: US_ENGINE_IP,
+      port: 80,
+      path: "/api/v1/dub/upload",
+      method: "POST",
+      headers: {
+        "Host": US_ENGINE_HOST_HEADER,
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        "Content-Length": totalLength
+      },
+      timeout: 120000
+    };
+
+    const req = http.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => { data += chunk; });
+      res.on("end", () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error("Invalid JSON response from US engine upload"));
+          }
+        } else {
+          reject(new Error(`US engine upload returned HTTP ${res.statusCode}: ${data}`));
+        }
+      });
+    });
+
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("تایم‌اوت در آپلود ویدیو به سرور آمریکا"));
+    });
+
+    req.on("error", (err) => {
+      reject(err);
+    });
+
+    req.write(header);
+    fileStream.pipe(req, { end: false });
+    fileStream.on("end", () => {
+      req.write(footer);
+      req.end();
+    });
   });
 }
 
