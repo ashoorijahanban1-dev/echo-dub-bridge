@@ -19,10 +19,15 @@ RUN npm run build
 FROM node:20-slim AS runner
 WORKDIR /app
 
-RUN (sed -i 's/Components: main/Components: main contrib non-free non-free-firmware/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's/main/main contrib non-free/g' /etc/apt/sources.list) && \
-    apt-get update -y && \
-    apt-get install -y openssl curl p7zip-full unrar && \
+RUN apt-get update -y && \
+    apt-get install -y openssl curl p7zip-full && \
     rm -rf /var/lib/apt/lists/*
+
+# Install official standalone unrar binary for RAR5 extraction
+RUN (curl -sL https://www.rarlab.com/rar/rarlinux-x64-624.tar.gz -o /tmp/rarlinux.tar.gz && \
+    tar -xzf /tmp/rarlinux.tar.gz -C /usr/local/bin --strip-components=1 rar/unrar && \
+    chmod +x /usr/local/bin/unrar && \
+    rm -f /tmp/rarlinux.tar.gz) || true
 
 ENV NODE_ENV=production
 ENV PORT=3000
