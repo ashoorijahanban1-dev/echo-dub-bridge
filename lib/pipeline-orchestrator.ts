@@ -123,9 +123,9 @@ export async function startDubbingPipeline({
             } catch (e) {}
             const part1Path = path.join(downloadDir, rawFileName);
 
-            // Download Part 1
+            // Download Part 1 (with 30 min timeout for multi-GB archives)
             console.log(`[Orchestrator] Downloading ${rarLinks[0]} to ${part1Path}`);
-            await downloadFileStream(rarLinks[0], part1Path, 600);
+            await downloadFileStream(rarLinks[0], part1Path, 1800);
 
             await prisma.ingestionBatch.update({
               where: { id: batch.id },

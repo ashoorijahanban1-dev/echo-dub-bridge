@@ -18,13 +18,13 @@ export function extractRarLinksFromHtml(html: string): string[] {
   return links;
 }
 
-export async function downloadFileStream(url: string, destPath: string, timeoutSec: number = 600): Promise<void> {
+export async function downloadFileStream(url: string, destPath: string, timeoutSec: number = 1800): Promise<void> {
   const dir = path.dirname(destPath);
   fs.mkdirSync(dir, { recursive: true });
 
-  // Use curl with full redirect, auto-resume and referer support
-  const cmd = `curl -L --fail --connect-timeout 30 --max-time ${timeoutSec} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${url}"`;
-  console.log(`[Downloader] Executing curl for ${url}`);
+  // Use curl with full redirect, auto-resume (-C -), and referer support
+  const cmd = `curl -L -C - --fail --connect-timeout 30 --max-time ${timeoutSec} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${url}"`;
+  console.log(`[Downloader] Executing curl with auto-resume for ${url}`);
   await execPromise(cmd);
 
   if (!fs.existsSync(destPath) || fs.statSync(destPath).size < 1000) {
