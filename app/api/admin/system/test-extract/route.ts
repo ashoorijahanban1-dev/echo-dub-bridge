@@ -3,6 +3,7 @@ import { exec } from "child_process";
 import util from "util";
 import fs from "fs";
 import path from "path";
+import { downloadFileStream } from "@/lib/downloadly-downloader";
 
 const execPromise = util.promisify(exec);
 
@@ -16,8 +17,7 @@ export async function POST(request: Request) {
     const rarPath = path.join(tmpDir, path.basename(new URL(url).pathname));
 
     logs.push(`1. Downloading 10MB slice to: ${rarPath}`);
-    // Download 10MB of archive to test extraction behavior
-    await execPromise(`curl -L -C - --fail --connect-timeout 15 --max-time 30 --referer "https://downloadly.ir/" -A "Mozilla/5.0" -r 0-10485760 -o "${rarPath}" "${url}"`);
+    await downloadFileStream(url, rarPath, 60);
 
     const stat = fs.statSync(rarPath);
     logs.push(`Downloaded file size: ${stat.size} bytes`);
