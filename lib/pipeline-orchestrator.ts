@@ -115,11 +115,17 @@ export async function startDubbingPipeline({
 
             const downloadDir = path.join(process.cwd(), "storage", "downloads", batch.id);
             fs.mkdirSync(downloadDir, { recursive: true });
-            const part1Path = path.join(downloadDir, "part1.rar");
+            
+            let rawFileName = "part1.rar";
+            try {
+              const urlObj = new URL(rarLinks[0]);
+              rawFileName = path.basename(urlObj.pathname) || "part1.rar";
+            } catch (e) {}
+            const part1Path = path.join(downloadDir, rawFileName);
 
             // Download Part 1
             console.log(`[Orchestrator] Downloading ${rarLinks[0]} to ${part1Path}`);
-            await downloadFileStream(rarLinks[0], part1Path, 60000);
+            await downloadFileStream(rarLinks[0], part1Path, 600);
 
             await prisma.ingestionBatch.update({
               where: { id: batch.id },
@@ -188,12 +194,12 @@ export async function startDubbingPipeline({
 
       console.log(`[Orchestrator] Job successfully registered on US Engine: ${usJobId}`);
 
-      // Step C: Poll US Engine for Real Progress
+      // Step C: Poll US Engine for Real Progress (up to 300 attempts = ~18 minutes)
       let isDone = false;
       let attempts = 0;
       let finalResult: any = null;
 
-      while (!isDone && attempts < 60) {
+      while (!isDone && attempts < 300) {
         attempts++;
         await new Promise((r) => setTimeout(r, 3500));
 

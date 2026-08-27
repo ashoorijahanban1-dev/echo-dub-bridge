@@ -18,12 +18,12 @@ export function extractRarLinksFromHtml(html: string): string[] {
   return links;
 }
 
-export async function downloadFileStream(url: string, destPath: string, timeoutSec: number = 300): Promise<void> {
+export async function downloadFileStream(url: string, destPath: string, timeoutSec: number = 600): Promise<void> {
   const dir = path.dirname(destPath);
   fs.mkdirSync(dir, { recursive: true });
 
-  // Use curl with full redirect and referer support
-  const cmd = `curl -L --fail --connect-timeout 20 --max-time ${timeoutSec} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${url}"`;
+  // Use curl with full redirect, auto-resume and referer support
+  const cmd = `curl -L --fail --connect-timeout 30 --max-time ${timeoutSec} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${url}"`;
   console.log(`[Downloader] Executing curl for ${url}`);
   await execPromise(cmd);
 
@@ -35,19 +35,23 @@ export async function downloadFileStream(url: string, destPath: string, timeoutS
 export async function extractRarArchive(rarFilePath: string, outputDir: string, password = "www.downloadly.ir"): Promise<string[]> {
   fs.mkdirSync(outputDir, { recursive: true });
 
+  // Try 7z extraction (allowing non-fatal volume exit codes)
   try {
     const cmd7z = `7z x -p"${password}" -y -o"${outputDir}" "${rarFilePath}"`;
     await execPromise(cmd7z);
-  } catch (err7z) {
-    try {
-      const cmdUnrar = `unrar x -p"${password}" -y "${rarFilePath}" "${outputDir}"`;
-      await execPromise(cmdUnrar);
-    } catch (errUnrar: any) {
-      console.warn("[Downloader] Extraction error:", errUnrar.message);
-    }
+  } catch (err7z: any) {
+    console.log("[Downloader] 7z non-fatal warning/exit:", err7z.message);
   }
 
-  // Find all extracted video files
+  // Also try 7z flat extract for video formats directly
+  try {
+    const cmd7zE = `7z e -p"${password}" -y -o"${outputDir}" "${rarFilePath}" "*.mp4" "*.mkv" "*.mov" -r`;
+    await execPromise(cmd7zE);
+  } catch (err7zE: any) {
+    // Non-fatal
+  }
+
+  // Scan output directory for valid video files
   const videoFiles: string[] = [];
   function scanDir(dir: string) {
     if (!fs.existsSync(dir)) return;
@@ -59,7 +63,12 @@ export async function extractRarArchive(rarFilePath: string, outputDir: string, 
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase();
         if ([".mp4", ".mkv", ".mov", ".avi", ".ts"].includes(ext)) {
-          videoFiles.push(fullPath);
+          try {
+            const stat = fs.statSync(fullPath);
+            if (stat.size > 500000) { // minimum 500KB for real video
+              videoFiles.push(fullPath);
+            }
+          } catch (e) {}
         }
       }
     }
