@@ -18,28 +18,13 @@ export function extractRarLinksFromHtml(html: string): string[] {
   return links;
 }
 
-const KNOWN_CDN_IPS: Record<string, string> = {
-  "dl3.downloadly.ir": "193.151.157.170",
-  "dl.downloadly.ir": "193.151.157.170",
-  "dl3-downloadly.111.ir.cdn.ir": "193.151.157.19",
-  "dl-downloadly.111.ir.cdn.ir": "193.151.157.19",
-  "edge01.111.ir.cdn.ir": "193.151.157.19",
-  "edge02.111.ir.cdn.ir": "193.151.157.19",
-  "edge03.111.ir.cdn.ir": "193.151.157.19"
-};
-
 export async function downloadFileStream(url: string, destPath: string, timeoutSec: number = 1800): Promise<void> {
   const dir = path.dirname(destPath);
   fs.mkdirSync(dir, { recursive: true });
 
-  // Build DNS resolve flags for all known CDN endpoints so Docker DNS never fails
-  const resolveArgs = Object.entries(KNOWN_CDN_IPS)
-    .map(([host, ip]) => `--resolve "${host}:443:${ip}" --resolve "${host}:80:${ip}"`)
-    .join(" ");
-
-  // Use curl with full redirect, auto-resume (-C -), and explicit IP resolutions
-  const cmd = `curl -L -C - --fail --connect-timeout 30 --max-time ${timeoutSec} ${resolveArgs} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${url}"`;
-  console.log(`[Downloader] Executing curl with direct CDN IP resolution for ${url}`);
+  // Use standard clean curl with resume, follow-redirects, user-agent and downloadly referer
+  const cmd = `curl -L -C - --fail --connect-timeout 30 --max-time ${timeoutSec} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${url}"`;
+  console.log(`[Downloader] Executing curl download for: ${url}`);
   await execPromise(cmd);
 
   if (!fs.existsSync(destPath) || fs.statSync(destPath).size < 1000) {
