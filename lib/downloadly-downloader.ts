@@ -2,6 +2,9 @@ import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
 import util from "util";
+import dns from "dns";
+import https from "https";
+import http from "http";
 
 const execPromise = util.promisify(exec);
 
@@ -18,13 +21,79 @@ export function extractRarLinksFromHtml(html: string): string[] {
   return links;
 }
 
+try {
+  dns.setServers(["8.8.8.8", "1.1.1.1", "178.22.122.100", "185.51.200.2"]);
+} catch (e) {}
+
+async function resolveHostIp(hostname: string): Promise<string | null> {
+  try {
+    const ips = await dns.promises.resolve4(hostname);
+    if (ips && ips.length > 0) return ips[0];
+  } catch (e) {}
+  return null;
+}
+
+async function getRedirectUrl(urlStr: string): Promise<string> {
+  return new Promise((resolve) => {
+    try {
+      const parsed = new URL(urlStr);
+      const isHttps = parsed.protocol === "https:";
+      const req = (isHttps ? https : http).request(urlStr, {
+        method: "HEAD",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Referer": "https://downloadly.ir/"
+        },
+        timeout: 10000,
+        rejectUnauthorized: false
+      }, (res) => {
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          const nextUrl = new URL(res.headers.location, urlStr).toString();
+          resolve(nextUrl);
+        } else {
+          resolve(urlStr);
+        }
+      });
+      req.on("error", () => resolve(urlStr));
+      req.on("timeout", () => { req.destroy(); resolve(urlStr); });
+      req.end();
+    } catch (e) {
+      resolve(urlStr);
+    }
+  });
+}
+
 export async function downloadFileStream(url: string, destPath: string, timeoutSec: number = 1800): Promise<void> {
   const dir = path.dirname(destPath);
   fs.mkdirSync(dir, { recursive: true });
 
-  // Use standard clean curl with resume, follow-redirects, user-agent and downloadly referer
-  const cmd = `curl -L -C - --fail --connect-timeout 30 --max-time ${timeoutSec} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${url}"`;
-  console.log(`[Downloader] Executing curl download for: ${url}`);
+  // Resolve any initial 302 redirects (e.g. dl3.downloadly.ir -> dl3-downloadly.111.ir.cdn.ir)
+  let targetUrl = url;
+  try {
+    const resolvedUrl = await getRedirectUrl(url);
+    if (resolvedUrl && resolvedUrl !== url) {
+      targetUrl = resolvedUrl;
+      console.log(`[Downloader] Redirect detected: ${url} -> ${targetUrl}`);
+    }
+  } catch (e) {}
+
+  // Resolve IPs for both original and target hostnames using public DNS to bypass Docker DNS limitations
+  const hostnamesToResolve = new Set<string>();
+  try { hostnamesToResolve.add(new URL(url).hostname); } catch (e) {}
+  try { hostnamesToResolve.add(new URL(targetUrl).hostname); } catch (e) {}
+
+  const resolveParts: string[] = [];
+  for (const host of hostnamesToResolve) {
+    const ip = await resolveHostIp(host);
+    if (ip) {
+      resolveParts.push(`--resolve "${host}:443:${ip}" --resolve "${host}:80:${ip}"`);
+    }
+  }
+  const resolveArgs = resolveParts.join(" ");
+
+  // Execute curl with resume (-C -), follow-redirects (-L), retry and pre-resolved IPs
+  const cmd = `curl -L -C - --fail --retry 3 --connect-timeout 30 --max-time ${timeoutSec} ${resolveArgs} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${targetUrl}"`;
+  console.log(`[Downloader] Executing curl download: ${cmd.substring(0, 160)}...`);
   await execPromise(cmd);
 
   if (!fs.existsSync(destPath) || fs.statSync(destPath).size < 1000) {
