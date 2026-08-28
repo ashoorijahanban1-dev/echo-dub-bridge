@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchDownloadlyPage } from "@/lib/downloadly-fetcher";
 import { extractRarLinksFromHtml, downloadFileStream, extractRarArchive } from "@/lib/downloadly-downloader";
 import { submitDubbingJobDirect, uploadDubbingFileDirect, getDubbingJobStatusDirect } from "@/lib/us-engine-client";
+import { logPipelineEvent } from "@/lib/pipeline-logger";
 
 export interface StartDubbingParams {
   discoveredCourseId?: string;
@@ -42,10 +43,18 @@ export async function startDubbingPipeline({
       completedEpisodes: 0,
       voiceGender: voiceGender,
       logs: JSON.stringify([
-        { time: new Date().toISOString(), message: "🚀 آغاز خط تولید خودکار و هماهنگی سرورها" }
+        `[${new Date().toLocaleTimeString("fa-IR")}] [PIPELINE] 🚀 آغاز خط تولید هوشمند برای دوره: ${titleFa}`
       ])
     }
   });
+
+  // Log startup details
+  await logPipelineEvent(
+    batch.id,
+    "INIT",
+    `دوره: ${titleFa} | صدای انتخابی: ${voiceGender === "female" ? "زنانه" : "مردانه"} | منبع: ${effectiveSourceUrl}`,
+    "INFO"
+  );
 
   // 2. Ensure Course exists in DB
   const course = await prisma.course.upsert({
@@ -75,7 +84,7 @@ export async function startDubbingPipeline({
   // 3. Background Real Downloader & Extraction Runner
   (async () => {
     try {
-      console.log(`[Orchestrator] Starting real course extraction & dubbing for: ${titleFa}`);
+      await logPipelineEvent(batch.id, "PIPELINE", `شروع پویش و استخراج ویدیوهای دوره...`, "INFO");
       
       let usJobId: string | null = null;
       let realExtractedVideoPath: string | null = null;
@@ -91,62 +100,121 @@ export async function startDubbingPipeline({
 
         let rarLinks: string[] = [];
         for (const cUrl of candidateUrls) {
-          console.log(`[Orchestrator] Fetching course page candidate: ${cUrl}`);
+          await logPipelineEvent(batch.id, "CRAWLER", `بررسی صفحه دانلودلی: ${cUrl}`, "INFO");
           const pageRes = await fetchDownloadlyPage(cUrl);
           if (pageRes && pageRes.html) {
             const found = extractRarLinksFromHtml(pageRes.html);
             if (found.length > 0) {
               rarLinks = found;
-              console.log(`[Orchestrator] Successfully found ${rarLinks.length} RAR archive links at ${cUrl}`);
+              await logPipelineEvent(
+                batch.id,
+                "CRAWLER",
+                `تعداد ${rarLinks.length} لینک پارت RAR در صفحه کشف شد.`,
+                "SUCCESS",
+                `پارت اول: ${rarLinks[0]}`
+              );
               break;
             }
           }
         }
           
-          if (rarLinks.length > 0) {
-            await prisma.ingestionBatch.update({
-              where: { id: batch.id },
-              data: {
-                status: "DOWNLOADING",
-                totalParts: rarLinks.length,
-                currentStage: `1️⃣ در حال دانلود پارت ۱ از ${rarLinks.length} با IP سرور ایران...`
-              }
-            });
-
-            const downloadDir = path.join(process.cwd(), "storage", "downloads", batch.id);
-            fs.mkdirSync(downloadDir, { recursive: true });
-            
-            let rawFileName = "part1.rar";
-            try {
-              const urlObj = new URL(rarLinks[0]);
-              rawFileName = path.basename(urlObj.pathname) || "part1.rar";
-            } catch (e) {}
-            const part1Path = path.join(downloadDir, rawFileName);
-
-            // Download Part 1 (with 30 min timeout for multi-GB archives)
-            console.log(`[Orchestrator] Downloading ${rarLinks[0]} to ${part1Path}`);
-            await downloadFileStream(rarLinks[0], part1Path, 1800);
-
-            await prisma.ingestionBatch.update({
-              where: { id: batch.id },
-              data: {
-                status: "EXTRACTING",
-                currentStage: "2️⃣ استخراج خودکار آرشیو با پسورد www.downloadly.ir..."
-              }
-            });
-
-            // Extract with 7z/unrar
-            const extractDir = path.join(process.cwd(), "storage", "extracted", batch.id);
-            const extractedVideos = await extractRarArchive(part1Path, extractDir);
-            console.log(`[Orchestrator] Extracted ${extractedVideos.length} video files from RAR`);
-
-            if (extractedVideos.length > 0) {
-              realExtractedVideoPath = extractedVideos[0];
-              console.log(`[Orchestrator] Selected real lecture video: ${realExtractedVideoPath}`);
+        if (rarLinks.length > 0) {
+          await prisma.ingestionBatch.update({
+            where: { id: batch.id },
+            data: {
+              status: "DOWNLOADING",
+              totalParts: rarLinks.length,
+              currentStage: `1️⃣ در حال دانلود پارت ۱ از ${rarLinks.length} با IP سرور ایران...`
             }
+          });
+
+          const downloadDir = path.join(process.cwd(), "storage", "downloads", batch.id);
+          fs.mkdirSync(downloadDir, { recursive: true });
+          
+          let rawFileName = "part1.rar";
+          try {
+            const urlObj = new URL(rarLinks[0]);
+            rawFileName = path.basename(urlObj.pathname) || "part1.rar";
+          } catch (e) {}
+          const part1Path = path.join(downloadDir, rawFileName);
+
+          await logPipelineEvent(
+            batch.id,
+            "DOWNLOADER",
+            `شروع دانلود پارت ۱ (${rawFileName}) از سرور با تفکیک DNS و هدر ارجاع...`,
+            "INFO",
+            rarLinks[0]
+          );
+
+          // Download Part 1 (with 30 min timeout for multi-GB archives)
+          await downloadFileStream(rarLinks[0], part1Path, 1800);
+
+          let downloadedSizeMb = 0;
+          if (fs.existsSync(part1Path)) {
+            downloadedSizeMb = Number((fs.statSync(part1Path).size / (1024 * 1024)).toFixed(1));
           }
+
+          await logPipelineEvent(
+            batch.id,
+            "DOWNLOADER",
+            `دانلود پارت ۱ با موفقیت انجام شد (حجم: ${downloadedSizeMb} مگابایت)`,
+            "SUCCESS",
+            part1Path
+          );
+
+          await prisma.ingestionBatch.update({
+            where: { id: batch.id },
+            data: {
+              status: "EXTRACTING",
+              currentStage: "2️⃣ استخراج خودکار آرشیو با پسورد www.downloadly.ir..."
+            }
+          });
+
+          await logPipelineEvent(
+            batch.id,
+            "UNRAR",
+            `آغاز اکسترکت پارت فشرده با موتور رسمی RARLab unrar و پسورد www.downloadly.ir...`,
+            "INFO"
+          );
+
+          // Extract with official unrar
+          const extractDir = path.join(process.cwd(), "storage", "extracted", batch.id);
+          const extractedVideos = await extractRarArchive(part1Path, extractDir);
+          
+          await logPipelineEvent(
+            batch.id,
+            "UNRAR",
+            `عملیات اکسترکت انجام شد؛ تعداد ${extractedVideos.length} فایل ویدیویی معتبر استخراج گردید.`,
+            extractedVideos.length > 0 ? "SUCCESS" : "WARN",
+            extractedVideos.map(v => path.basename(v)).join(", ")
+          );
+
+          if (extractedVideos.length > 0) {
+            realExtractedVideoPath = extractedVideos[0];
+            const vidSizeMb = (fs.statSync(realExtractedVideoPath).size / (1024 * 1024)).toFixed(1);
+            await logPipelineEvent(
+              batch.id,
+              "UNRAR",
+              `فایل درس اصلی انتخاب شد: ${path.basename(realExtractedVideoPath)} (حجم: ${vidSizeMb} MB)`,
+              "INFO"
+            );
+          }
+        } else {
+          await logPipelineEvent(
+            batch.id,
+            "CRAWLER",
+            `هیچ لینک پارت RAR در صفحه یافت نشد. تلاش برای استفاده از منبع مستقیم ویدیو...`,
+            "WARN"
+          );
+        }
       } catch (dlErr: any) {
-        console.warn(`[Orchestrator] Real RAR download/extraction warning: ${dlErr.message}`);
+        await logPipelineEvent(
+          batch.id,
+          "DOWNLOADER",
+          `هشدار در فرآیند دانلود یا استخراج آرشیو: ${dlErr.message}`,
+          "WARN",
+          dlErr.stack
+        );
       }
 
       // Step B: Submit or Upload to US AI Engine
@@ -159,7 +227,14 @@ export async function startDubbingPipeline({
           }
         });
 
-        console.log(`[Orchestrator] Uploading real extracted lecture to US Engine: ${realExtractedVideoPath}`);
+        await logPipelineEvent(
+          batch.id,
+          "US-ENGINE",
+          `ارسال مستقیم استریم ویدیوی استخراج شده به سرور آمریکا (209.145.63.253)...`,
+          "INFO",
+          path.basename(realExtractedVideoPath)
+        );
+
         const uploadRes = await uploadDubbingFileDirect({
           filePath: realExtractedVideoPath,
           title: titleFa,
@@ -167,6 +242,13 @@ export async function startDubbingPipeline({
           preserve_bgm: true
         });
         usJobId = uploadRes.job_id;
+
+        await logPipelineEvent(
+          batch.id,
+          "US-ENGINE",
+          `فایل ویدیو با موفقیت در سرور آمریکا دریافت و ثبت شد. شناسه جاب: ${usJobId}`,
+          "SUCCESS"
+        );
       } else if (videoUrl && videoUrl.startsWith("http")) {
         await prisma.ingestionBatch.update({
           where: { id: batch.id },
@@ -176,7 +258,13 @@ export async function startDubbingPipeline({
           }
         });
 
-        console.log(`[Orchestrator] Submitting direct video URL to US Engine: ${videoUrl}`);
+        await logPipelineEvent(
+          batch.id,
+          "US-ENGINE",
+          `ارسال لینک استریم ویدیو به سرور آمریکا: ${videoUrl}`,
+          "INFO"
+        );
+
         const submitData = await submitDubbingJobDirect({
           video_url: videoUrl,
           title: titleFa,
@@ -184,20 +272,33 @@ export async function startDubbingPipeline({
           preserve_bgm: true
         });
         usJobId = submitData.job_id;
+
+        await logPipelineEvent(
+          batch.id,
+          "US-ENGINE",
+          `جاب مستقیم در سرور آمریکا ثبت شد. شناسه: ${usJobId}`,
+          "SUCCESS"
+        );
       } else {
-        throw new Error("فایل ویدیوی این دوره از آرشیو دانلودلی دریافت نشد و لینک مستقیم ویدیو تعیین نشده است.");
+        throw new Error("هیچ فایل ویدیویی از آرشیو دانلودلی استخراج نشد و لینک ویدیوی مستقیم نیز مشخص نیست.");
       }
 
       if (!usJobId) {
-        throw new Error("امکان برقراری ارتباط با موتور دوبله در سرور آمریکا وجود ندارد.");
+        throw new Error("پاسخی از سرور آمریکا جهت شروع جاب دوبله دریافت نشد.");
       }
-
-      console.log(`[Orchestrator] Job successfully registered on US Engine: ${usJobId}`);
 
       // Step C: Poll US Engine for Real Progress (up to 300 attempts = ~18 minutes)
       let isDone = false;
       let attempts = 0;
       let finalResult: any = null;
+      let lastReportedStage = "";
+
+      await logPipelineEvent(
+        batch.id,
+        "AI-STUDIO",
+        `آغاز رصد و مانیتورینگ هوش مصنوعی (Whisper -> Gemini 3 -> EdgeTTS -> FFmpeg)...`,
+        "INFO"
+      );
 
       while (!isDone && attempts < 300) {
         attempts++;
@@ -205,32 +306,62 @@ export async function startDubbingPipeline({
 
         try {
           const sData = await getDubbingJobStatusDirect(usJobId);
-          
+          const currentProgress = sData.progress || 0;
+          const currentStageText = sData.current_stage || "در حال پردازش صوتی و ترجمه...";
+
           await prisma.ingestionBatch.update({
             where: { id: batch.id },
             data: {
-              currentStage: `موتور هوش مصنوعی [${sData.progress || 0}%]: ${sData.current_stage || "در حال پردازش..."}`,
-              completedEpisodes: (sData.progress && sData.progress >= 100) ? 1 : 0
+              currentStage: `موتور هوش مصنوعی [${currentProgress}%]: ${currentStageText}`,
+              completedEpisodes: (currentProgress >= 100) ? 1 : 0
             }
           });
+
+          if (currentStageText !== lastReportedStage) {
+            lastReportedStage = currentStageText;
+            await logPipelineEvent(
+              batch.id,
+              "AI-STUDIO",
+              `پیشرفت دوبله [${currentProgress}%]: ${currentStageText}`,
+              "INFO"
+            );
+          }
 
           if (sData.status === "COMPLETED") {
             isDone = true;
             finalResult = sData.result;
+            await logPipelineEvent(
+              batch.id,
+              "AI-STUDIO",
+              `موتور دوبله آمریکا با موفقیت پایان یافت (100%).`,
+              "SUCCESS"
+            );
           } else if (sData.status === "FAILED") {
-            throw new Error(sData.error || "US Engine pipeline failed.");
+            throw new Error(sData.error || "پردازش دوبله در سرور آمریکا با شکست مواجه شد.");
           }
         } catch (pollErr: any) {
-          console.warn("[Orchestrator] Poll warning:", pollErr.message);
+          if (attempts % 10 === 0) {
+            await logPipelineEvent(
+              batch.id,
+              "POLL",
+              `در انتظار پاسخ سرور آمریکا (تلاش ${attempts}/300): ${pollErr.message}`,
+              "WARN"
+            );
+          }
         }
       }
 
       if (!finalResult || !finalResult.telegram) {
-        throw new Error("فرآیند دوبله در سرور آمریکا با تایم‌اوت مواجه شد یا نتیجه تلگرام دریافت نگردید.");
+        throw new Error("فرآیند دوبله در سرور آمریکا به موقع پایان نیافت یا متادیتای تلگرام بازگردانده نشد.");
       }
 
       const tgData = finalResult.telegram;
-      console.log(`[Orchestrator] Dubbing complete! Telegram Message ID: ${tgData.message_id}, File ID: ${tgData.file_id}`);
+      await logPipelineEvent(
+        batch.id,
+        "TELEGRAM",
+        `ویدیوی دوبله شده در کانال تلگرام بارگذاری شد (پیام: ${tgData.message_id} | فایل: ${tgData.file_id?.slice(0, 15)}...)`,
+        "SUCCESS"
+      );
 
       // Step D: Create or Update Chapter & Episode
       let chapter = await prisma.chapter.findFirst({ where: { courseId: course.id } });
@@ -258,6 +389,13 @@ export async function startDubbingPipeline({
         }
       });
 
+      await logPipelineEvent(
+        batch.id,
+        "DATABASE",
+        `جلسه ۱ دوره در دیتابیس سایت ثبت و در کاتالوگ دوره‌ها فعال شد.`,
+        "SUCCESS"
+      );
+
       // Step E: Complete IngestionBatch in DB
       await prisma.ingestionBatch.update({
         where: { id: batch.id },
@@ -268,6 +406,13 @@ export async function startDubbingPipeline({
         }
       });
 
+      await logPipelineEvent(
+        batch.id,
+        "PUBLISHED",
+        `🎉 خط تولید دوره "${titleFa}" با موفقیت ۱۰۰٪ تکمیل و منتشر شد!`,
+        "SUCCESS"
+      );
+
       if (discoveredCourseId) {
         await prisma.discoveredCourse.update({
           where: { id: discoveredCourseId },
@@ -276,6 +421,14 @@ export async function startDubbingPipeline({
       }
     } catch (err: any) {
       console.error("[Orchestrator] Pipeline error:", err.message);
+      await logPipelineEvent(
+        batch.id,
+        "ERROR",
+        `❌ خطا در خط تولید: ${err.message}`,
+        "ERROR",
+        err.stack
+      );
+
       await prisma.ingestionBatch.update({
         where: { id: batch.id },
         data: {
@@ -291,6 +444,6 @@ export async function startDubbingPipeline({
     batchId: batch.id,
     courseId: course.id,
     courseSlug: course.slug,
-    message: "خط تولید خودکار هوش مصنوعی آغاز شد و ویدیو به سرور آمریکا ارسال گردید."
+    message: "خط تولید خودکار هوش مصنوعی آغاز شد و به سرور متصل گردید."
   };
 }

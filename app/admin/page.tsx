@@ -1020,14 +1020,16 @@ export default function MissionControlAdminPage() {
                   {selectedQueueJob?.logs && selectedQueueJob.logs.length > 0 ? (
                     selectedQueueJob.logs.map((log: string, idx: number) => {
                       let colorClass = "text-slate-300";
-                      if (log.includes("[IRAN-NODE]")) colorClass = "text-cyan-300";
-                      if (log.includes("[UNRAR]")) colorClass = "text-yellow-300";
-                      if (log.includes("[US-ENGINE]")) colorClass = "text-purple-300";
-                      if (log.includes("[AI-TRANSLATE]")) colorClass = "text-blue-300";
-                      if (log.includes("[AUDIO-MIX]")) colorClass = "text-pink-300";
-                      if (log.includes("[PUBLISH]")) colorClass = "text-emerald-300 font-bold";
+                      if (log.includes("[ERROR]") || log.includes("❌") || log.includes("خطا")) colorClass = "text-red-400 font-bold bg-red-950/40 p-1 rounded border border-red-900/40";
+                      else if (log.includes("[WARN]") || log.includes("⚠️") || log.includes("هشدار")) colorClass = "text-amber-300";
+                      else if (log.includes("[PUBLISH") || log.includes("🎉") || log.includes("✅")) colorClass = "text-emerald-300 font-bold";
+                      else if (log.includes("[CRAWLER]") || log.includes("[DOWNLOADER]") || log.includes("[IRAN-NODE]")) colorClass = "text-cyan-300";
+                      else if (log.includes("[UNRAR]")) colorClass = "text-yellow-300";
+                      else if (log.includes("[US-ENGINE]")) colorClass = "text-purple-300";
+                      else if (log.includes("[AI-STUDIO]") || log.includes("[AI-TRANSLATE]")) colorClass = "text-pink-300";
+                      else if (log.includes("[TELEGRAM]")) colorClass = "text-sky-300 font-bold";
                       return (
-                        <div key={idx} className={`${colorClass} flex items-start gap-2`}>
+                        <div key={idx} className={`${colorClass} flex items-start gap-2 break-all`}>
                           <span className="text-slate-600 select-none">&gt;</span>
                           <span>{log}</span>
                         </div>

@@ -12,6 +12,7 @@ export interface TelegramPublishOptions {
   category?: string;
   thumbnailUrl?: string;
   videoUrl?: string;
+  telegramFileId?: string;
   episodeTitle?: string;
 }
 
@@ -37,7 +38,7 @@ async function callTelegramAPI(method: string, payload: any): Promise<any> {
     console.warn("US Engine Telegram Proxy attempt failed:", err.message);
   }
 
-  // 2. Second attempt: Direct Telegram Bot API (if network has open routing)
+  // 2. Second attempt: Direct Telegram Bot API
   try {
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`, {
       method: "POST",
@@ -68,25 +69,14 @@ export async function publishCourseToTelegram(opts: TelegramPublishOptions) {
     category = "برنامه‌نویسی و هوش مصنوعی",
     thumbnailUrl,
     videoUrl,
+    telegramFileId,
     episodeTitle
   } = opts;
 
   const webCourseUrl = `https://rpim.ir/courses/${slug}`;
   const botUsername = "EchoDub_bot";
 
-  const captionHtml = `🎬 <b>دوره جدید با دوبله فارسی منتشر شد</b>
-
-📌 <b>عنوان:</b> ${courseTitleFa}
-${courseTitleEn ? `🌐 <b>Original:</b> <i>${courseTitleEn}</i>\n` : ""}
-🎙 <b>دوبله هوش مصنوعی:</b> فارسی استودیویی و روان (EchoDub AI)
-👨‍🏫 <b>مدرس:</b> ${instructor}
-🏷 <b>دسته‌بندی:</b> ${category}
-⚡ <b>کیفیت:</b> 1080p Full HD دو زبانه (فارسی + زبان اصلی)
-
-🔗 <b>تماشا و استریم آنلاین در وبسایت:</b>
-<a href="${webCourseUrl}">${webCourseUrl}</a>
-
-🆔 @${botUsername} | 🌐 rpim.ir`;
+  const captionHtml = `🎬 <b>دوره جدید با دوبله فارسی هوش مصنوعی</b>\n\n📌 <b>عنوان:</b> ${courseTitleFa}\n${courseTitleEn ? `🌐 <b>Original:</b> <i>${courseTitleEn}</i>\n` : ""}🎙 <b>دوبله هوش مصنوعی:</b> فارسی روان و تخصصی (EchoDub AI)\n👨‍🏫 <b>مدرس:</b> ${instructor}\n🏷 <b>دسته‌بندی:</b> ${category}\n⚡ <b>کیفیت:</b> 1080p Full HD\n\n🔗 <b>تماشا و استریم آنلاین در وبسایت:</b>\n<a href="${webCourseUrl}">${webCourseUrl}</a>\n\n🆔 @${botUsername} | 🌐 rpim.ir`;
 
   let sentMessageId: number | null = null;
   let sentFileId: string | null = null;
@@ -124,33 +114,34 @@ ${courseTitleEn ? `🌐 <b>Original:</b> <i>${courseTitleEn}</i>\n` : ""}
     }
   }
 
-  // 2. Send Video Preview to Telegram Channel
-  const videoCaption = `🎥 <b>جلسه ۱: ${episodeTitle || "مقدمه و شروع دوره"}</b>\n\n🎙 <b>دوبله فارسی هوش مصنوعی</b>\n🌐 <a href="${webCourseUrl}">مشاهده تمامی جلسات در سایت</a>`;
+  // 2. If genuine video file_id or videoUrl is provided, send the real video
+  if (telegramFileId || (videoUrl && videoUrl.startsWith("http"))) {
+    const videoCaption = `🎥 <b>جلسه ۱: ${episodeTitle || "مقدمه و شروع دوره"}</b>\n\n🎙 <b>دوبله فارسی هوش مصنوعی</b>\n🌐 <a href="${webCourseUrl}">مشاهده تمامی جلسات در سایت</a>`;
 
-  // Use high-performance pre-cached Telegram file_id
-  const videoPayload: any = {
-    chat_id: TELEGRAM_CHANNEL_ID,
-    video: "BAACAgQAAyEGAAMBCTrUdwADD2qNX1lnmd3wefwO24Zsme1qjAmGAAKbCAACcSE8U0teE2H-MI6XPQQ",
-    caption: videoCaption,
-    parse_mode: "HTML",
-    supports_streaming: true,
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🎬 باز کردن دوره در وبسایت",
-            url: webCourseUrl
-          }
+    const videoPayload: any = {
+      chat_id: TELEGRAM_CHANNEL_ID,
+      video: telegramFileId || videoUrl,
+      caption: videoCaption,
+      parse_mode: "HTML",
+      supports_streaming: true,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🎬 باز کردن دوره در وبسایت",
+              url: webCourseUrl
+            }
+          ]
         ]
-      ]
-    }
-  };
+      }
+    };
 
-  const vRes = await callTelegramAPI("sendVideo", videoPayload);
-  if (vRes.ok) {
-    sentFileId = vRes.result?.video?.file_id || null;
-    if (!sentMessageId) {
-      sentMessageId = vRes.result?.message_id || null;
+    const vRes = await callTelegramAPI("sendVideo", videoPayload);
+    if (vRes.ok) {
+      sentFileId = vRes.result?.video?.file_id || telegramFileId || null;
+      if (!sentMessageId) {
+        sentMessageId = vRes.result?.message_id || null;
+      }
     }
   }
 
