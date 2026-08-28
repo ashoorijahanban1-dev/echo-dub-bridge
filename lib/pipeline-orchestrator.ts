@@ -247,7 +247,7 @@ export async function startDubbingPipeline({
         const uploadRes = await uploadDubbingFileDirect({
           filePath: realExtractedVideoPath,
           title: normalizeTextForSpeech(titleFa),
-          voice_gender: voiceGender,
+          voice_gender: voiceProfile.gender,
           preserve_bgm: true
         });
         usJobId = uploadRes.job_id;
@@ -277,7 +277,7 @@ export async function startDubbingPipeline({
         const submitData = await submitDubbingJobDirect({
           video_url: videoUrl,
           title: normalizeTextForSpeech(titleFa),
-          voice_gender: voiceGender,
+          voice_gender: voiceProfile.gender,
           preserve_bgm: true
         });
         usJobId = submitData.job_id;
@@ -296,7 +296,7 @@ export async function startDubbingPipeline({
         throw new Error("پاسخی از سرور آمریکا جهت شروع جاب دوبله دریافت نشد.");
       }
 
-      // Step C: Poll US Engine for Real Progress (up to 300 attempts = ~18 minutes)
+      // Step C: Poll US Engine for Real Progress (up to 350 attempts = ~20 minutes)
       let isDone = false;
       let attempts = 0;
       let finalResult: any = null;
@@ -309,7 +309,7 @@ export async function startDubbingPipeline({
         "INFO"
       );
 
-      while (!isDone && attempts < 300) {
+      while (!isDone && attempts < 350) {
         attempts++;
         await new Promise((r) => setTimeout(r, 3500));
 
@@ -345,15 +345,26 @@ export async function startDubbingPipeline({
               `موتور دوبله آمریکا با موفقیت پایان یافت (100%).`,
               "SUCCESS"
             );
+            break;
           } else if (sData.status === "FAILED") {
-            throw new Error(sData.error || "پردازش دوبله در سرور آمریکا با شکست مواجه شد.");
+            const failReason = sData.error || sData.current_stage || "پردازش دوبله در سرور آمریکا ناموفق بود.";
+            await logPipelineEvent(
+              batch.id,
+              "US-ENGINE",
+              `❌ سرور آمریکا خطا گزارش کرد: ${failReason}`,
+              "ERROR"
+            );
+            throw new Error(`خطای موتور دوبله سرور آمریکا: ${failReason}`);
           }
         } catch (pollErr: any) {
+          if (pollErr.message.includes("خطای موتور دوبله") || pollErr.message.includes("Error in pipeline")) {
+            throw pollErr;
+          }
           if (attempts % 10 === 0) {
             await logPipelineEvent(
               batch.id,
               "POLL",
-              `در انتظار پاسخ سرور آمریکا (تلاش ${attempts}/300): ${pollErr.message}`,
+              `در انتظار پاسخ سرور آمریکا (تلاش ${attempts}/350): ${pollErr.message}`,
               "WARN"
             );
           }

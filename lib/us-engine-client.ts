@@ -14,10 +14,11 @@ export interface SubmitJobParams {
 
 export async function submitDubbingJobDirect(params: SubmitJobParams): Promise<{ job_id: string; status: string }> {
   return new Promise((resolve, reject) => {
+    const effectiveGender = (params.voice_gender && params.voice_gender.toLowerCase().includes("female")) ? "female" : "male";
     const payload = JSON.stringify({
       video_url: params.video_url,
       title: params.title,
-      voice_gender: params.voice_gender || "male",
+      voice_gender: effectiveGender,
       preserve_bgm: params.preserve_bgm !== false
     });
 
@@ -76,6 +77,7 @@ export async function uploadDubbingFileDirect({
   preserve_bgm?: boolean;
 }): Promise<{ job_id: string; status: string }> {
   return new Promise((resolve, reject) => {
+    const effectiveGender = (voice_gender && voice_gender.toLowerCase().includes("female")) ? "female" : "male";
     const boundary = `----WebKitFormBoundary${Date.now().toString(16)}`;
     const filename = path.basename(filePath);
     const fileStream = fs.createReadStream(filePath);
@@ -84,7 +86,7 @@ export async function uploadDubbingFileDirect({
     let header = `--${boundary}\r\n`;
     header += `Content-Disposition: form-data; name="title"\r\n\r\n${title}\r\n`;
     header += `--${boundary}\r\n`;
-    header += `Content-Disposition: form-data; name="voice_gender"\r\n\r\n${voice_gender}\r\n`;
+    header += `Content-Disposition: form-data; name="voice_gender"\r\n\r\n${effectiveGender}\r\n`;
     header += `--${boundary}\r\n`;
     header += `Content-Disposition: form-data; name="preserve_bgm"\r\n\r\n${preserve_bgm}\r\n`;
     header += `--${boundary}\r\n`;
