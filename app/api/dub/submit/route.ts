@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "video_url is required" }, { status: 400 });
     }
 
-    const job = await submitDubbingJobToEngine(video_url, title, voice_gender || "male");
+    const job = await submitDubbingJobToEngine(video_url, title, voice_gender || "male-warm");
     return NextResponse.json(job);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

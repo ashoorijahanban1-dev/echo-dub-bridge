@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       titleFa,
       titleEn,
       instructor: instructor || "مدرس بین‌المللی",
-      voiceGender: voiceGender || "male"
+      voiceGender: voiceGender || "male-warm"
     });
 
     return NextResponse.json({

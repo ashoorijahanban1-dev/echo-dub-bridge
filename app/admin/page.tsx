@@ -55,6 +55,7 @@ import {
   RefreshCcw
 } from "lucide-react";
 import { submitDubbingJobToEngine, getEngineJobStatus, DubbingJobStatus } from "@/lib/api-client";
+import { VOICE_PROFILES, getVoiceProfileById } from "@/lib/voice-tuner";
 
 export default function MissionControlAdminPage() {
   const router = useRouter();
@@ -125,14 +126,14 @@ export default function MissionControlAdminPage() {
   const [scraperUrl, setScraperUrl] = useState("");
   const [isScraping, setIsScraping] = useState(false);
   const [scrapedData, setScrapedData] = useState<any>(null);
-  const [ingestVoice, setIngestVoice] = useState<"male" | "female">("male");
+  const [ingestVoice, setIngestVoice] = useState<string>("male-warm");
   const [isIngesting, setIsIngesting] = useState(false);
   const [ingestionStatusMsg, setIngestionStatusMsg] = useState("");
 
   // Studio Single Job State
   const [studioUrl, setStudioUrl] = useState("");
   const [studioTitle, setStudioTitle] = useState("");
-  const [studioVoice, setStudioVoice] = useState<"male" | "female">("male");
+  const [studioVoice, setStudioVoice] = useState<string>("male-warm");
   const [isStudioSubmitting, setIsStudioSubmitting] = useState(false);
   const [currentJob, setCurrentJob] = useState<DubbingJobStatus | null>(null);
   const [jobHistory, setJobHistory] = useState<DubbingJobStatus[]>([]);
@@ -1145,6 +1146,56 @@ export default function MissionControlAdminPage() {
               </div>
             )}
 
+            {/* Voice Persona Tuning Bar for Auto-Ingestion */}
+            <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-850 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  انتخاب صدای هوش مصنوعی برای دوره‌های در صف:
+                </span>
+                <span className="text-[10px] text-cyan-400 font-mono bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">
+                  Prosody & IT Phonetics Tuned
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {VOICE_PROFILES.map((prof) => {
+                  const isSelected = ingestVoice === prof.id;
+                  return (
+                    <button
+                      key={prof.id}
+                      type="button"
+                      onClick={() => setIngestVoice(prof.id)}
+                      className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between gap-1.5 ${
+                        isSelected
+                          ? "bg-cyan-500/15 border-cyan-500/70 text-white shadow-md shadow-cyan-500/10"
+                          : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          isSelected ? "bg-cyan-400 text-slate-950" : "bg-slate-800 text-slate-400"
+                        }`}>
+                          {prof.badge}
+                        </span>
+                        <span className="text-[9px] font-mono text-slate-500">
+                          {prof.engineType === "google-gemini" ? "Google AI" : "Neural"}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-white flex items-center justify-between">
+                        <span>{prof.nameFa}</span>
+                        {isSelected && <span className="text-cyan-400 text-xs">✓</span>}
+                      </div>
+                      <div className="text-[9px] text-slate-500 font-mono flex items-center gap-1.5">
+                        <span>سرعت: {prof.defaultRate}</span>
+                        <span>•</span>
+                        <span>گام: {prof.defaultPitch}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Filter & Batch Actions Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-slate-800">
               {/* Status Filter Buttons */}
@@ -1859,6 +1910,49 @@ export default function MissionControlAdminPage() {
                 placeholder="معرفی معماری کانتینرها در داکر"
                 className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs"
               />
+            </div>
+
+            {/* Voice Persona Selector */}
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                انتخاب صدای گوینده فارسی:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {VOICE_PROFILES.map((prof) => {
+                  const isSelected = studioVoice === prof.id;
+                  return (
+                    <button
+                      key={prof.id}
+                      type="button"
+                      onClick={() => setStudioVoice(prof.id)}
+                      className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between gap-1 ${
+                        isSelected
+                          ? "bg-cyan-500/15 border-cyan-500 text-white shadow-md shadow-cyan-500/10"
+                          : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          isSelected ? "bg-cyan-400 text-slate-950" : "bg-slate-800 text-slate-400"
+                        }`}>
+                          {prof.badge}
+                        </span>
+                        <span className="text-[9px] font-mono text-slate-500">
+                          {prof.engineType === "google-gemini" ? "Google AI" : "Neural"}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-white flex items-center justify-between">
+                        <span>{prof.nameFa}</span>
+                        {isSelected && <span className="text-cyan-400 text-xs">✓</span>}
+                      </div>
+                      <div className="text-[9px] text-slate-500 font-mono">
+                        سرعت: {prof.defaultRate} • گام: {prof.defaultPitch}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <button

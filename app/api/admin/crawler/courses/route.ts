@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
           titleEn: disc.titleEn,
           instructor: disc.instructor,
           category: disc.category,
-          voiceGender: voiceGender || "male"
+          voiceGender: voiceGender || "male-warm"
         });
 
         results.push({ id: disc.id, titleFa: disc.titleFa, slug: disc.slug, batchId: pipelineResult.batchId });

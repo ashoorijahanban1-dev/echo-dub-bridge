@@ -17,11 +17,12 @@ import {
   ArrowUpRight
 } from "lucide-react";
 import { US_ENGINE_URL, DubbingJobStatus, submitDubbingJobToEngine, getEngineJobStatus } from "@/lib/api-client";
+import { VOICE_PROFILES } from "@/lib/voice-tuner";
 
 export default function AdminStudioPage() {
   const [videoUrl, setVideoUrl] = useState("");
   const [title, setTitle] = useState("");
-  const [voiceGender, setVoiceGender] = useState<"male" | "female">("male");
+  const [voiceGender, setVoiceGender] = useState<string>("male-warm");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentJob, setCurrentJob] = useState<DubbingJobStatus | null>(null);
   const [jobHistory, setJobHistory] = useState<DubbingJobStatus[]>([]);
@@ -138,50 +139,83 @@ export default function AdminStudioPage() {
                 />
               </div>
 
-              {/* Voice selector */}
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  انتخاب صدای گوینده فارسی:
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setVoiceGender("male")}
-                    className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between ${
-                      voiceGender === "male"
-                        ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-300"
-                        : "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800"
-                    }`}
-                  >
-                    <div>
-                      <div className="text-xs font-bold">فرید (Farid Neural)</div>
-                      <div className="text-[10px] text-slate-500">صدای مردانه رسمی و آرام</div>
-                    </div>
-                    {voiceGender === "male" && <span className="text-cyan-400 text-xs">✓</span>}
-                  </button>
+              {/* Voice selector & Studio Tuning */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-200">
+                    انتخاب پروفایل گوینده و تیونینگ صوتی:
+                  </label>
+                  <span className="text-[10px] text-cyan-400 font-semibold bg-cyan-950/60 px-2.5 py-0.5 rounded-full border border-cyan-800/60">
+                    Neural + Prosody Tuner v2.6
+                  </span>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setVoiceGender("female")}
-                    className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between ${
-                      voiceGender === "female"
-                        ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-300"
-                        : "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800"
-                    }`}
-                  >
-                    <div>
-                      <div className="text-xs font-bold">دل‌آرا (Dilara Neural)</div>
-                      <div className="text-[10px] text-slate-500">صدای زنانه دلنشین</div>
-                    </div>
-                    {voiceGender === "female" && <span className="text-cyan-400 text-xs">✓</span>}
-                  </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {VOICE_PROFILES.map((prof) => {
+                    const isSelected = voiceGender === prof.id;
+                    return (
+                      <button
+                        key={prof.id}
+                        type="button"
+                        onClick={() => setVoiceGender(prof.id)}
+                        className={`p-3.5 rounded-2xl border text-right transition-all flex flex-col justify-between gap-2 relative overflow-hidden ${
+                          isSelected
+                            ? "bg-cyan-500/15 border-cyan-500/60 text-white shadow-lg shadow-cyan-500/10"
+                            : "bg-slate-900/90 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            isSelected ? "bg-cyan-400 text-slate-950" : "bg-slate-800 text-slate-400"
+                          }`}>
+                            {prof.badge}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-500">
+                            {prof.engineType === "google-gemini" ? "Google AI" : "Edge Neural"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="text-xs font-black text-white flex items-center gap-1.5">
+                            <span>{prof.nameFa}</span>
+                            {isSelected && <span className="text-cyan-400 text-xs">✓</span>}
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-relaxed mt-1 line-clamp-2">
+                            {prof.description}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60 text-[9px] text-slate-400 font-mono">
+                          <span>سرعت: {prof.defaultRate}</span>
+                          <span>•</span>
+                          <span>گام: {prof.defaultPitch}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Additional Studio Voice Tuning Sliders */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-850 space-y-2.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      آوانگاری و واژه‌نامه تخصصی IT:
+                    </span>
+                    <span className="text-emerald-400 font-bold text-[10px] bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">
+                      فعال (۴۰+ واژه فنی)
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    اصطلاحاتی نظیر Kubernetes، Docker، API، Python و سال‌ها پیش از ارسال به صورت خودکار به فونتیک استاندارد فارسی تبدیل می‌شوند.
+                  </p>
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-bold text-white shadow-glow hover:opacity-95 active:scale-98 transition-all text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-black text-slate-950 shadow-glow hover:opacity-95 active:scale-98 transition-all text-xs flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>

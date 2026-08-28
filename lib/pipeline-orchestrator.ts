@@ -5,6 +5,7 @@ import { fetchDownloadlyPage } from "@/lib/downloadly-fetcher";
 import { extractRarLinksFromHtml, downloadFileStream, extractRarArchive } from "@/lib/downloadly-downloader";
 import { submitDubbingJobDirect, uploadDubbingFileDirect, getDubbingJobStatusDirect } from "@/lib/us-engine-client";
 import { logPipelineEvent } from "@/lib/pipeline-logger";
+import { getVoiceProfileById, normalizeTextForSpeech } from "@/lib/voice-tuner";
 
 export interface StartDubbingParams {
   discoveredCourseId?: string;
@@ -26,11 +27,12 @@ export async function startDubbingPipeline({
   titleEn,
   instructor = "مدرس بین‌المللی Udemy",
   category = "برنامه‌نویسی و DevOps",
-  voiceGender = "male",
+  voiceGender = "male-warm",
   videoUrl
 }: StartDubbingParams) {
   const targetSlug = slug || `course-${Date.now()}`;
   const effectiveSourceUrl = sourceUrl || videoUrl || `https://downloadly.ir/download/elearning/video-tutorials/${targetSlug}/`;
+  const voiceProfile = getVoiceProfileById(voiceGender);
 
   // 1. Create IngestionBatch in DB
   const batch = await prisma.ingestionBatch.create({
@@ -41,7 +43,7 @@ export async function startDubbingPipeline({
       currentStage: "⏳ در صف پردازش هوشمند و استخراج لینک‌های دانلود...",
       totalParts: 1,
       completedEpisodes: 0,
-      voiceGender: voiceGender,
+      voiceGender: voiceProfile.id,
       logs: JSON.stringify([
         `[${new Date().toLocaleTimeString("fa-IR")}] [PIPELINE] 🚀 آغاز خط تولید هوشمند برای دوره: ${titleFa}`
       ])
@@ -52,7 +54,7 @@ export async function startDubbingPipeline({
   await logPipelineEvent(
     batch.id,
     "INIT",
-    `دوره: ${titleFa} | صدای انتخابی: ${voiceGender === "female" ? "زنانه" : "مردانه"} | منبع: ${effectiveSourceUrl}`,
+    `دوره: ${titleFa} | صدای انتخابی: ${voiceProfile.nameFa} (${voiceProfile.badge}) | منبع: ${effectiveSourceUrl}`,
     "INFO"
   );
 
@@ -244,7 +246,7 @@ export async function startDubbingPipeline({
 
         const uploadRes = await uploadDubbingFileDirect({
           filePath: realExtractedVideoPath,
-          title: titleFa,
+          title: normalizeTextForSpeech(titleFa),
           voice_gender: voiceGender,
           preserve_bgm: true
         });
@@ -274,7 +276,7 @@ export async function startDubbingPipeline({
 
         const submitData = await submitDubbingJobDirect({
           video_url: videoUrl,
-          title: titleFa,
+          title: normalizeTextForSpeech(titleFa),
           voice_gender: voiceGender,
           preserve_bgm: true
         });
