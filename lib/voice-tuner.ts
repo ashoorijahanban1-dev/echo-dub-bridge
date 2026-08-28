@@ -21,45 +21,45 @@ export interface VoiceProfile {
 export const VOICE_PROFILES: VoiceProfile[] = [
   {
     id: "male-warm",
-    nameFa: "گوینده صمیمی آموزشی (فرید - تیون پادکستی)",
+    nameFa: "گوینده صمیمی آموزشی (فرید - تیون پادکستی شمرده)",
     gender: "male",
     engineType: "edge-neural",
     voiceName: "fa-IR-FaridNeural",
-    description: "لحن گرم، صمیمی و رسا با مکث‌های طبیعی؛ بهینه‌شده برای دوره‌های برنامه‌نویسی و پادکست‌های تخصصی.",
+    description: "لحن آرام، شمرده، گرم و بدون عجله با مکث‌های تنفسی کافی؛ مناسب آموزش‌های برنامه‌نویسی و پادکست.",
     badge: "محبوب‌ترین",
     color: "cyan",
-    defaultRate: "-4%",
+    defaultRate: "-10%",
     defaultPitch: "-1.5Hz",
     audioDuckingVolume: 0.12,
-    tags: ["صمیمی", "آموزشی", "تخصصی IT", "بدون لهجه"]
+    tags: ["شمرده", "بدون عجله", "آموزشی", "تخصصی IT"]
   },
   {
     id: "male-formal",
-    nameFa: "گوینده رسمی و مستند (مردانه آکادمیک)",
+    nameFa: "گوینده رسمی و مستند (مردانه آکادمیک و متین)",
     gender: "male",
     engineType: "edge-neural",
     voiceName: "fa-IR-FaridNeural",
-    description: "لحن جدی، شمرده و آکادمیک؛ مناسب دوره‌های مدیریت، مهندسی داده و مستندات سازمانی.",
+    description: "لحن جدی، بسیار شمرده و آکادمیک؛ مناسب دوره‌های مدیریت، مهندسی داده و مستندات سازمانی.",
     badge: "رسمی",
     color: "blue",
-    defaultRate: "-6%",
+    defaultRate: "-12%",
     defaultPitch: "-2Hz",
     audioDuckingVolume: 0.10,
-    tags: ["رسمی", "آکادمیک", "عمیق"]
+    tags: ["رسمی", "آکادمیک", "عمیق", "شمرده"]
   },
   {
     id: "female-energetic",
-    nameFa: "گوینده شفاف و پرانرژی (دل‌آرا - تیون مدرن)",
+    nameFa: "گوینده شفاف و شیوا (دل‌آرا - تیون روان)",
     gender: "female",
     engineType: "edge-neural",
     voiceName: "fa-IR-DilaraNeural",
-    description: "صدای واضح، شفاف و باانرژی با تلفظ کریستالی حروف؛ ایده‌آل برای هوش مصنوعی و فرانت‌اند.",
-    badge: "پرانرژی",
+    description: "صدای واضح، شفاف و باانرژی اما شمرده و رسا؛ ایده‌آل برای هوش مصنوعی و فرانت‌اند.",
+    badge: "شفاف و شیوا",
     color: "emerald",
-    defaultRate: "-3%",
+    defaultRate: "-8%",
     defaultPitch: "+0Hz",
     audioDuckingVolume: 0.14,
-    tags: ["شفاف", "مدرن", "پرانرژی", "زنانه"]
+    tags: ["شفاف", "مدرن", "روان", "زنانه"]
   },
   {
     id: "gemini-studio",
@@ -70,7 +70,7 @@ export const VOICE_PROFILES: VoiceProfile[] = [
     description: "صدای نسل جدید هوش مصنوعی گوگل با پردازش محتوای چندحالته و تلفظ بین‌المللی واژگان.",
     badge: "هوشمند",
     color: "purple",
-    defaultRate: "-2%",
+    defaultRate: "-8%",
     defaultPitch: "+0Hz",
     audioDuckingVolume: 0.15,
     tags: ["Google AI", "مدرن", "جمنای"]

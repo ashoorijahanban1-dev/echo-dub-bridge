@@ -10,7 +10,9 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Check if episode has a valid external non-blocked URL
+    let targetFilePath: string | null = null;
+
+    // 1. Check if episode exists in DB and locate physical file
     try {
       const episode = await prisma.episode.findFirst({
         where: {
@@ -18,28 +20,69 @@ export async function GET(
             { id: id },
             { streamUrl: { contains: id } }
           ]
+        },
+        include: {
+          chapter: {
+            include: {
+              course: true
+            }
+          }
         }
       });
 
-      if (
-        episode &&
-        episode.streamUrl &&
-        episode.streamUrl.startsWith("http") &&
-        !episode.streamUrl.includes("commondatastorage.googleapis.com") &&
-        !episode.streamUrl.includes("0.0.0.0")
-      ) {
-        return NextResponse.redirect(episode.streamUrl, 307);
+      if (episode) {
+        // If external non-blocked URL
+        if (
+          episode.streamUrl &&
+          episode.streamUrl.startsWith("http") &&
+          !episode.streamUrl.includes("commondatastorage.googleapis.com") &&
+          !episode.streamUrl.includes("0.0.0.0")
+        ) {
+          return NextResponse.redirect(episode.streamUrl, 307);
+        }
+
+        // Check episode originalVideoUrl on disk
+        if (episode.originalVideoUrl) {
+          const directPath = path.isAbsolute(episode.originalVideoUrl)
+            ? episode.originalVideoUrl
+            : path.join(process.cwd(), episode.originalVideoUrl.replace(/^\//, ""));
+          if (fs.existsSync(directPath)) {
+            targetFilePath = directPath;
+          }
+        }
+
+        // Check storage/courses/{courseSlug}/
+        if (!targetFilePath && episode.chapter?.course?.slug) {
+          const courseDir = path.join(process.cwd(), "storage", "courses", episode.chapter.course.slug);
+          if (fs.existsSync(courseDir)) {
+            const files = fs.readdirSync(courseDir);
+            // Match by episode number or name
+            const matchingFile = files.find(f => 
+              f.startsWith(`${episode.episodeNumber}.`) || 
+              f.startsWith(`${episode.episodeNumber} -`) ||
+              f.includes(episode.titleEn || "") ||
+              f.endsWith(".mp4")
+            );
+            if (matchingFile) {
+              targetFilePath = path.join(courseDir, matchingFile);
+            }
+          }
+        }
       }
-    } catch {
-      // ignore db error
+    } catch (e) {
+      console.error("DB lookup error in stream:", e);
     }
 
-    // Stream native domestic video directly with HTTP 206 Partial Content
-    const filePath = path.join(process.cwd(), "public", "sample-video.mp4");
+    // 2. Fallback to public sample video if no physical video is found
+    if (!targetFilePath || !fs.existsSync(targetFilePath)) {
+      targetFilePath = path.join(process.cwd(), "public", "sample-video.mp4");
+    }
 
-    if (!fs.existsSync(filePath)) {
+    if (!fs.existsSync(targetFilePath)) {
       return new NextResponse("Video stream unavailable", { status: 404 });
     }
+
+    const filePath = targetFilePath;
 
     const stat = fs.statSync(filePath);
     const fileSize = stat.size;

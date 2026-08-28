@@ -199,7 +199,76 @@ export async function startDubbingPipeline({
           );
 
           if (extractedVideos.length > 0) {
-            realExtractedVideoPath = extractedVideos[0];
+            // 1. Persistent Course Storage Directory
+            const courseMediaDir = path.join(process.cwd(), "storage", "courses", targetSlug);
+            if (!fs.existsSync(courseMediaDir)) {
+              fs.mkdirSync(courseMediaDir, { recursive: true });
+            }
+
+            // 2. Ensure Course has a valid Chapter
+            let chapter = await prisma.chapter.findFirst({ where: { courseId: course.id } });
+            if (!chapter) {
+              chapter = await prisma.chapter.create({
+                data: {
+                  courseId: course.id,
+                  titleFa: "فصل ۱: جلسات و سرفصل‌های جامع دوره",
+                  orderIndex: 1
+                }
+              });
+            }
+
+            // 3. Register ALL Extracted Video Lessons in the Database!
+            for (let i = 0; i < extractedVideos.length; i++) {
+              const srcVideo = extractedVideos[i];
+              const epFilename = path.basename(srcVideo);
+              const destVideo = path.join(courseMediaDir, epFilename);
+              try {
+                if (!fs.existsSync(destVideo)) {
+                  fs.copyFileSync(srcVideo, destVideo);
+                }
+              } catch (copyErr) {
+                console.error("Failed to copy video to course media dir:", copyErr);
+              }
+
+              const cleanTitle = epFilename.replace(/\.mp4$/i, "").replace(/^\d+[\.\-\s]+/, "").trim() || `جلسه ${i + 1}`;
+              const epNumber = i + 1;
+              const epId = `${targetSlug}-ep${epNumber}`;
+
+              await prisma.episode.upsert({
+                where: { id: epId },
+                update: {
+                  titleFa: `جلسه ${epNumber}: ${cleanTitle}`,
+                  titleEn: cleanTitle,
+                  episodeNumber: epNumber,
+                  streamUrl: `/api/stream/${epId}`,
+                  originalVideoUrl: `/storage/courses/${targetSlug}/${epFilename}`
+                },
+                create: {
+                  id: epId,
+                  chapterId: chapter.id,
+                  titleFa: `جلسه ${epNumber}: ${cleanTitle}`,
+                  titleEn: cleanTitle,
+                  episodeNumber: epNumber,
+                  durationSeconds: 600,
+                  streamUrl: `/api/stream/${epId}`,
+                  originalVideoUrl: `/storage/courses/${targetSlug}/${epFilename}`,
+                  isFreePreview: epNumber <= 2
+                }
+              });
+            }
+
+            await logPipelineEvent(
+              batch.id,
+              "DATABASE",
+              `تعداد ${extractedVideos.length} جلسه واقعی از دوره در دیتابیس سایت ثبت و آماده استریم شد.`,
+              "SUCCESS"
+            );
+
+            // Select lesson 1 for AI Dubbing
+            realExtractedVideoPath = path.join(courseMediaDir, path.basename(extractedVideos[0]));
+            if (!fs.existsSync(realExtractedVideoPath)) {
+              realExtractedVideoPath = extractedVideos[0];
+            }
             const vidSizeMb = (fs.statSync(realExtractedVideoPath).size / (1024 * 1024)).toFixed(1);
             await logPipelineEvent(
               batch.id,
@@ -383,26 +452,35 @@ export async function startDubbingPipeline({
         "SUCCESS"
       );
 
-      // Step D: Create or Update Chapter & Episode
-      let chapter = await prisma.chapter.findFirst({ where: { courseId: course.id } });
-      if (!chapter) {
-        chapter = await prisma.chapter.create({
+      // Step D: Update Episode 1 with dubbed Telegram & Duration metadata
+      let epChapter = await prisma.chapter.findFirst({ where: { courseId: course.id } });
+      if (!epChapter) {
+        epChapter = await prisma.chapter.create({
           data: {
             courseId: course.id,
-            titleFa: "فصل ۱: مفاهیم پایه و شروع کار عملی",
+            titleFa: "فصل ۱: جلسات و سرفصل‌های جامع دوره",
             orderIndex: 1
           }
         });
       }
 
-      await prisma.episode.create({
-        data: {
-          chapterId: chapter.id,
+      const ep1Id = `${targetSlug}-ep1`;
+      await prisma.episode.upsert({
+        where: { id: ep1Id },
+        update: {
+          telegramFileId: tgData.file_id || null,
+          telegramMessageId: tgData.message_id ? Number(tgData.message_id) : null,
+          durationSeconds: Math.round(finalResult.duration_seconds || 480),
+          streamUrl: `/api/stream/${ep1Id}`
+        },
+        create: {
+          id: ep1Id,
+          chapterId: epChapter.id,
           titleFa: "جلسه ۱: مقدمه و شروع کار با دوبله فارسی هوش مصنوعی",
           titleEn: "01 - Introduction & Practical Implementation",
           episodeNumber: 1,
           durationSeconds: Math.round(finalResult.duration_seconds || 480),
-          streamUrl: "/api/stream/video",
+          streamUrl: `/api/stream/${ep1Id}`,
           telegramFileId: tgData.file_id || null,
           telegramMessageId: tgData.message_id ? Number(tgData.message_id) : null,
           isFreePreview: true
@@ -412,7 +490,7 @@ export async function startDubbingPipeline({
       await logPipelineEvent(
         batch.id,
         "DATABASE",
-        `جلسه ۱ دوره در دیتابیس سایت ثبت و در کاتالوگ دوره‌ها فعال شد.`,
+        `جلسه ۱ دوره با موفقیت دوبله و با استریم اختصاصی فعال شد.`,
         "SUCCESS"
       );
 

@@ -46,7 +46,8 @@ export default async function WatchEpisodePage({
     };
   }
 
-  if (!course.chapters || course.chapters.length === 0 || (course.chapters.length === 1 && (course.chapters[0].episodes?.length || 0) <= 1)) {
+  // Fallback demo course ONLY if DB has no chapters at all
+  if (!course.chapters || course.chapters.length === 0) {
     course.chapters = [
       {
         id: "c1",
@@ -58,52 +59,10 @@ export default async function WatchEpisodePage({
             titleEn: "01 - Introduction and Learning Roadmap",
             episodeNumber: 1,
             durationSeconds: 480,
-            streamUrl: "/api/stream/video",
+            streamUrl: `/api/stream/${course.slug}-ep1`,
             isFreePreview: true,
-          },
-          {
-            id: `${course.slug}-ep2`,
-            titleFa: "جلسه ۲: نصب ابزارها و ساخت اولین پروژه",
-            titleEn: "02 - Environment Setup & First Hands-on Project",
-            episodeNumber: 2,
-            durationSeconds: 650,
-            streamUrl: "/api/stream/video",
-            isFreePreview: true,
-          },
-          {
-            id: `${course.slug}-ep3`,
-            titleFa: "جلسه ۳: بررسی عمیق ساختار و مفاهیم بنیادین",
-            titleEn: "03 - Core Architecture and Deep Dive",
-            episodeNumber: 3,
-            durationSeconds: 780,
-            streamUrl: "/api/stream/video",
-            isFreePreview: false,
           }
         ],
-      },
-      {
-        id: "c2",
-        titleFa: "فصل ۲: پیاده‌سازی عملی و استقرار پروداکشن",
-        episodes: [
-          {
-            id: `${course.slug}-ep4`,
-            titleFa: "جلسه ۴: مدیریت داده‌ها، بهینه‌سازی و حل چالش‌ها",
-            titleEn: "04 - Data Flow & Real-World Optimization",
-            episodeNumber: 4,
-            durationSeconds: 840,
-            streamUrl: "/api/stream/video",
-            isFreePreview: false,
-          },
-          {
-            id: `${course.slug}-ep5`,
-            titleFa: "جلسه ۵: استقرار در کلاود و امنیت",
-            titleEn: "05 - Cloud Deployment & Security",
-            episodeNumber: 5,
-            durationSeconds: 920,
-            streamUrl: "/api/stream/video",
-            isFreePreview: false,
-          }
-        ]
       }
     ];
   }
@@ -123,18 +82,19 @@ export default async function WatchEpisodePage({
       id: episodeId,
       titleFa: "جلسه اول: آموزش تخصصی و مقدمات",
       titleEn: "Episode 1: Core Concepts",
-      streamUrl: "/api/stream/video",
+      streamUrl: `/api/stream/${episodeId}`,
       durationSeconds: 480,
     };
   }
 
-  // Ensure streamUrl is resilient and uses local /api/stream/video
+  // Ensure streamUrl routes to dynamic stream endpoint
   if (
     !currentEpisode.streamUrl ||
+    currentEpisode.streamUrl === "/api/stream/video" ||
     currentEpisode.streamUrl.includes("commondatastorage.googleapis.com") ||
     currentEpisode.streamUrl === "/sample-video.mp4"
   ) {
-    currentEpisode.streamUrl = "/api/stream/video";
+    currentEpisode.streamUrl = `/api/stream/${currentEpisode.id}`;
   }
 
   return (
