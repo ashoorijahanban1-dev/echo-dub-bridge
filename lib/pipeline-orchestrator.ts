@@ -119,48 +119,55 @@ export async function startDubbingPipeline({
         }
           
         if (rarLinks.length > 0) {
-          await prisma.ingestionBatch.update({
-            where: { id: batch.id },
-            data: {
-              status: "DOWNLOADING",
-              totalParts: rarLinks.length,
-              currentStage: `1️⃣ در حال دانلود پارت ۱ از ${rarLinks.length} با IP سرور ایران...`
-            }
-          });
-
           const downloadDir = path.join(process.cwd(), "storage", "downloads", batch.id);
           fs.mkdirSync(downloadDir, { recursive: true });
-          
-          let rawFileName = "part1.rar";
-          try {
-            const urlObj = new URL(rarLinks[0]);
-            rawFileName = path.basename(urlObj.pathname) || "part1.rar";
-          } catch (e) {}
-          const part1Path = path.join(downloadDir, rawFileName);
 
-          await logPipelineEvent(
-            batch.id,
-            "DOWNLOADER",
-            `شروع دانلود پارت ۱ (${rawFileName}) از سرور با تفکیک DNS و هدر ارجاع...`,
-            "INFO",
-            rarLinks[0]
-          );
+          let part1Path = "";
 
-          // Download Part 1 (with 30 min timeout for multi-GB archives)
-          await downloadFileStream(rarLinks[0], part1Path, 1800);
+          // Download all parts into the same directory for seamless multi-part RAR extraction
+          for (let pIdx = 0; pIdx < rarLinks.length; pIdx++) {
+            const currentPartUrl = rarLinks[pIdx];
+            let rawFileName = `part${pIdx + 1}.rar`;
+            try {
+              const urlObj = new URL(currentPartUrl);
+              rawFileName = path.basename(urlObj.pathname) || rawFileName;
+            } catch (e) {}
+            const currentPartPath = path.join(downloadDir, rawFileName);
+            if (pIdx === 0) part1Path = currentPartPath;
 
-          let downloadedSizeMb = 0;
-          if (fs.existsSync(part1Path)) {
-            downloadedSizeMb = Number((fs.statSync(part1Path).size / (1024 * 1024)).toFixed(1));
+            await prisma.ingestionBatch.update({
+              where: { id: batch.id },
+              data: {
+                status: "DOWNLOADING",
+                totalParts: rarLinks.length,
+                currentStage: `1️⃣ در حال دانلود پارت ${pIdx + 1} از ${rarLinks.length} با IP سرور ایران...`
+              }
+            });
+
+            await logPipelineEvent(
+              batch.id,
+              "DOWNLOADER",
+              `شروع دانلود پارت ${pIdx + 1} از ${rarLinks.length} (${rawFileName})...`,
+              "INFO",
+              currentPartUrl
+            );
+
+            // Download Part (with 30 min timeout for multi-GB archives)
+            await downloadFileStream(currentPartUrl, currentPartPath, 1800);
+
+            let downloadedSizeMb = 0;
+            if (fs.existsSync(currentPartPath)) {
+              downloadedSizeMb = Number((fs.statSync(currentPartPath).size / (1024 * 1024)).toFixed(1));
+            }
+
+            await logPipelineEvent(
+              batch.id,
+              "DOWNLOADER",
+              `پارت ${pIdx + 1} از ${rarLinks.length} با موفقیت دانلود شد (حجم: ${downloadedSizeMb} مگابایت)`,
+              "SUCCESS",
+              currentPartPath
+            );
           }
-
-          await logPipelineEvent(
-            batch.id,
-            "DOWNLOADER",
-            `دانلود پارت ۱ با موفقیت انجام شد (حجم: ${downloadedSizeMb} مگابایت)`,
-            "SUCCESS",
-            part1Path
-          );
 
           await prisma.ingestionBatch.update({
             where: { id: batch.id },

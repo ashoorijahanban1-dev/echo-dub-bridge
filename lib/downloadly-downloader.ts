@@ -139,36 +139,45 @@ async function getUnrarExecutablePath(): Promise<string> {
 
   return "unrar";
 }
-
 export async function extractRarArchive(rarFilePath: string, outputDir: string, password = "www.downloadly.ir"): Promise<string[]> {
   fs.mkdirSync(outputDir, { recursive: true });
-
   const unrarBin = await getUnrarExecutablePath();
+  // unrar requires trailing slash on destination directory to distinguish path from file mask
+  const targetDir = outputDir.endsWith("/") || outputDir.endsWith("\\") ? outputDir : outputDir + "/";
 
-  // 1. Try official unrar (supports full RAR5, multi-part volumes, AES password)
+  // List archive contents for diagnostics
   try {
-    const cmdUnrar = `"${unrarBin}" x -p"${password}" -y -o+ "${rarFilePath}" "${outputDir}"`;
-    console.log(`[Downloader] Executing: ${unrarBin} x ...`);
-    await execPromise(cmdUnrar);
-    console.log("[Downloader] unrar x extraction completed");
-  } catch (errUnrar: any) {
-    console.log("[Downloader] unrar non-fatal warning/exit:", errUnrar.message);
+    const { stdout: listOut } = await execPromise(`"${unrarBin}" lb -p"${password}" "${rarFilePath}"`);
+    console.log(`[Downloader] Archive files found:\n${listOut.trim().split("\n").slice(0, 10).join("\n")}`);
+  } catch (e: any) {
+    console.log(`[Downloader] unrar lb warning: ${e.message}`);
   }
 
-  // 2. Also try 7z extraction as fallback
+  // 1. Try official unrar extract with full paths (x) and destination with trailing slash
+  try {
+    const cmdUnrarX = `"${unrarBin}" x -p"${password}" -y -o+ "${rarFilePath}" "${targetDir}"`;
+    console.log(`[Downloader] Executing: ${cmdUnrarX}`);
+    const { stdout: xOut, stderr: xErr } = await execPromise(cmdUnrarX);
+    console.log("[Downloader] unrar x extraction completed:", xOut.slice(-200));
+  } catch (errUnrar: any) {
+    console.log("[Downloader] unrar x non-fatal warning/exit:", errUnrar.message);
+  }
+
+  // 2. Also try official unrar flat extract (e) to dump video files directly into targetDir
+  try {
+    const cmdUnrarE = `"${unrarBin}" e -p"${password}" -y -o+ "${rarFilePath}" "${targetDir}"`;
+    console.log(`[Downloader] Executing fallback: ${cmdUnrarE}`);
+    await execPromise(cmdUnrarE);
+  } catch (errUnrarE: any) {
+    console.log("[Downloader] unrar e non-fatal warning/exit:", errUnrarE.message);
+  }
+
+  // 3. Also try 7z extraction as secondary fallback
   try {
     const cmd7z = `7z x -p"${password}" -y -o"${outputDir}" "${rarFilePath}"`;
     await execPromise(cmd7z);
   } catch (err7z: any) {
     console.log("[Downloader] 7z non-fatal warning/exit:", err7z.message);
-  }
-
-  // 3. Also try 7z flat extract for video formats directly
-  try {
-    const cmd7zE = `7z e -p"${password}" -y -o"${outputDir}" "${rarFilePath}" "*.mp4" "*.mkv" "*.mov" -r`;
-    await execPromise(cmd7zE);
-  } catch (err7zE: any) {
-    // Non-fatal
   }
 
   // Scan output directory for valid video files
