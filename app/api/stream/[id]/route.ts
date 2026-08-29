@@ -73,13 +73,40 @@ export async function GET(
       console.error("DB lookup error in stream:", e);
     }
 
-    // 2. Fallback to public sample video if no physical video is found
+    // 2. If no physical file, try Telegram CDN via telegramFileId
     if (!targetFilePath || !fs.existsSync(targetFilePath)) {
-      targetFilePath = path.join(process.cwd(), "public", "sample-video.mp4");
+      try {
+        const episode = await prisma.episode.findFirst({
+          where: {
+            OR: [
+              { id: id },
+              { streamUrl: { contains: id } }
+            ]
+          }
+        });
+
+        if (episode?.telegramFileId && process.env.TELEGRAM_BOT_TOKEN) {
+          // Use Telegram Bot API getFile to get download URL
+          const tgRes = await fetch(
+            `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${episode.telegramFileId}`
+          );
+          const tgJson = await tgRes.json() as any;
+          if (tgJson.ok && tgJson.result?.file_path) {
+            const telegramFileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${tgJson.result.file_path}`;
+            return NextResponse.redirect(telegramFileUrl, 307);
+          }
+        }
+      } catch (tgErr) {
+        console.error("Telegram CDN redirect error:", tgErr);
+      }
     }
 
-    if (!fs.existsSync(targetFilePath)) {
-      return new NextResponse("Video stream unavailable", { status: 404 });
+    // 3. If still no video source found, return 404 (NOT a teaser!)
+    if (!targetFilePath || !fs.existsSync(targetFilePath)) {
+      return NextResponse.json(
+        { error: "ویدیوی این جلسه هنوز آماده نشده است.", code: "VIDEO_NOT_FOUND" },
+        { status: 404 }
+      );
     }
 
     const filePath = targetFilePath;

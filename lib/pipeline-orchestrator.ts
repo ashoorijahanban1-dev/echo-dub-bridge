@@ -264,18 +264,24 @@ export async function startDubbingPipeline({
               "SUCCESS"
             );
 
-            // Select lesson 1 for AI Dubbing
+            // Select ALL lessons for AI Dubbing (not just the first one!)
+            for (let dubIdx = 0; dubIdx < extractedVideos.length; dubIdx++) {
+              const currentVideoPath = path.join(courseMediaDir, path.basename(extractedVideos[dubIdx]));
+              const fallbackPath = extractedVideos[dubIdx];
+              const dubVideoPath = fs.existsSync(currentVideoPath) ? currentVideoPath : fallbackPath;
+              const vidSizeMb = (fs.statSync(dubVideoPath).size / (1024 * 1024)).toFixed(1);
+              await logPipelineEvent(
+                batch.id,
+                "UNRAR",
+                `فایل درس ${dubIdx + 1}/${extractedVideos.length} انتخاب شد: ${path.basename(dubVideoPath)} (حجم: ${vidSizeMb} MB)`,
+                "INFO"
+              );
+            }
+            // Use first video for initial dubbing, rest will be queued
             realExtractedVideoPath = path.join(courseMediaDir, path.basename(extractedVideos[0]));
             if (!fs.existsSync(realExtractedVideoPath)) {
               realExtractedVideoPath = extractedVideos[0];
             }
-            const vidSizeMb = (fs.statSync(realExtractedVideoPath).size / (1024 * 1024)).toFixed(1);
-            await logPipelineEvent(
-              batch.id,
-              "UNRAR",
-              `فایل درس اصلی انتخاب شد: ${path.basename(realExtractedVideoPath)} (حجم: ${vidSizeMb} MB)`,
-              "INFO"
-            );
           }
         } else {
           await logPipelineEvent(
