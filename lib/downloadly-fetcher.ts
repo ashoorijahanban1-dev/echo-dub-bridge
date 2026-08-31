@@ -28,61 +28,90 @@ export function decodeHtmlEntities(str: string): string {
     .trim();
 }
 
-export function fetchDownloadlyPage(url: string): Promise<{ status: number; html: string }> {
-  return new Promise((resolve, reject) => {
+export async function fetchDownloadlyPage(url: string): Promise<{ status: number; html: string }> {
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const parsed = new URL(url);
-      const options: https.RequestOptions = {
-        hostname: parsed.hostname,
-        port: 443,
-        path: parsed.pathname + parsed.search,
-        method: "GET",
-        family: 4, // Strict IPv4 to avoid ENOTFOUND/IPv6 timeouts
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-          "Accept-Language": "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7",
-          "Cache-Control": "no-cache",
-          "Pragma": "no-cache",
-          "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-          "Sec-Ch-Ua-Mobile": "?0",
-          "Sec-Ch-Ua-Platform": '"Windows"',
-          "Sec-Fetch-Dest": "document",
-          "Sec-Fetch-Mode": "navigate",
-          "Sec-Fetch-Site": "none",
-          "Sec-Fetch-User": "?1",
-          "Upgrade-Insecure-Requests": "1"
-        },
-        timeout: 14000
-      };
+      const result = await new Promise<{ status: number; html: string }>((resolve, reject) => {
+        try {
+          const parsed = new URL(url);
+          const options: https.RequestOptions = {
+            hostname: parsed.hostname,
+            port: 443,
+            path: parsed.pathname + parsed.search,
+            method: "GET",
+            family: 4,
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+              "Accept-Language": "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7",
+              "Cache-Control": "no-cache",
+              "Pragma": "no-cache"
+            },
+            timeout: 35000
+          };
 
-      const req = https.request(options, (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          return resolve(fetchDownloadlyPage(res.headers.location));
+          const req = https.request(options, (res) => {
+            if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              const nextLoc = new URL(res.headers.location, url).toString();
+              return resolve(fetchDownloadlyPage(nextLoc));
+            }
+
+            let data = "";
+            res.setEncoding("utf8");
+            res.on("data", (chunk) => { data += chunk; });
+            res.on("end", () => {
+              if (res.statusCode && res.statusCode >= 200 && res.statusCode < 400 && data.length > 500) {
+                resolve({ status: res.statusCode, html: data });
+              } else {
+                reject(new Error(`HTTP ${res.statusCode} with body length ${data.length}`));
+              }
+            });
+          });
+
+          req.on("timeout", () => {
+            req.destroy();
+            reject(new Error("مهلت اتصال به سرور دانلودلی (Timeout 35s) به پایان رسید."));
+          });
+
+          req.on("error", (err) => {
+            reject(err);
+          });
+
+          req.end();
+        } catch (e: any) {
+          reject(e);
         }
-
-        let data = "";
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => { data += chunk; });
-        res.on("end", () => {
-          resolve({ status: res.statusCode || 200, html: data });
-        });
       });
 
-      req.on("timeout", () => {
-        req.destroy();
-        reject(new Error("مهلت اتصال به سرور دانلودلی (Timeout 14s) به پایان رسید."));
-      });
+      return result;
+    } catch (attemptErr: any) {
+      console.warn(`[DownloadlyFetcher] Attempt ${attempt}/${maxAttempts} failed for ${url}: ${attemptErr.message}`);
 
-      req.on("error", (err) => {
-        reject(err);
-      });
+      // On final attempt or timeout, fallback to curl
+      if (attempt === maxAttempts) {
+        try {
+          const { exec } = require("child_process");
+          const util = require("util");
+          const execPromise = util.promisify(exec);
+          const curlCmd = `curl -sL --max-time 40 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" "${url}"`;
+          const { stdout } = await execPromise(curlCmd);
+          if (stdout && stdout.length > 500) {
+            console.log(`[DownloadlyFetcher] Fallback curl succeeded for ${url} (${stdout.length} bytes)`);
+            return { status: 200, html: stdout };
+          }
+        } catch (curlErr: any) {
+          console.error(`[DownloadlyFetcher] Fallback curl also failed: ${curlErr.message}`);
+        }
+        throw attemptErr;
+      }
 
-      req.end();
-    } catch (e: any) {
-      reject(e);
+      await new Promise((r) => setTimeout(r, 2000 * attempt));
     }
-  });
+  }
+
+  throw new Error("امکان دسترسی به صفحه دوره دانلودلی پس از ۳ بار تلاش میسر نشد.");
 }
 
 export function parseCoursesFromHtml(html: string, pageNum: number = 1): DownloadlyCourseCard[] {

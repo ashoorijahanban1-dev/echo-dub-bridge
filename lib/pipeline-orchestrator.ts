@@ -102,21 +102,25 @@ export async function startDubbingPipeline({
 
         let rarLinks: string[] = [];
         for (const cUrl of candidateUrls) {
-          await logPipelineEvent(batch.id, "CRAWLER", `بررسی صفحه دانلودلی: ${cUrl}`, "INFO");
-          const pageRes = await fetchDownloadlyPage(cUrl);
-          if (pageRes && pageRes.html) {
-            const found = extractRarLinksFromHtml(pageRes.html);
-            if (found.length > 0) {
-              rarLinks = found;
-              await logPipelineEvent(
-                batch.id,
-                "CRAWLER",
-                `تعداد ${rarLinks.length} لینک پارت RAR در صفحه کشف شد.`,
-                "SUCCESS",
-                `پارت اول: ${rarLinks[0]}`
-              );
-              break;
+          try {
+            await logPipelineEvent(batch.id, "CRAWLER", `بررسی صفحه دانلودلی: ${cUrl}`, "INFO");
+            const pageRes = await fetchDownloadlyPage(cUrl);
+            if (pageRes && pageRes.html) {
+              const found = extractRarLinksFromHtml(pageRes.html);
+              if (found.length > 0) {
+                rarLinks = found;
+                await logPipelineEvent(
+                  batch.id,
+                  "CRAWLER",
+                  `تعداد ${rarLinks.length} لینک پارت RAR در صفحه کشف شد.`,
+                  "SUCCESS",
+                  `پارت اول: ${rarLinks[0]}`
+                );
+                break;
+              }
             }
+          } catch (candErr: any) {
+            console.warn(`Candidate URL ${cUrl} failed: ${candErr.message}`);
           }
         }
           
