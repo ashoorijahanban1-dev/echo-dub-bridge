@@ -9,7 +9,7 @@ import http from "http";
 const execPromise = util.promisify(exec);
 
 export function extractRarLinksFromHtml(html: string): string[] {
-  const rarRegex = /href=["'](https?:\/\/[^"']+\.rar[^"']*)["']/gi;
+  const rarRegex = /href=["'](https?:\/\/[^"']+\.(?:rar|zip|7z)[^"']*)["']/gi;
   const links: string[] = [];
   let match;
   while ((match = rarRegex.exec(html)) !== null) {
@@ -18,6 +18,8 @@ export function extractRarLinksFromHtml(html: string): string[] {
       links.push(rawLink);
     }
   }
+  // Naturally sort multi-part files (part1 before part2 before part10)
+  links.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
   return links;
 }
 

@@ -337,7 +337,7 @@ export async function startDubbingPipeline({
           `فایل ویدیو با موفقیت در سرور آمریکا دریافت و ثبت شد. شناسه جاب: ${usJobId}`,
           "SUCCESS"
         );
-      } else if (videoUrl && videoUrl.startsWith("http")) {
+      } else if (videoUrl && videoUrl.startsWith("http") && !videoUrl.includes("downloadly.ir/elearning") && !videoUrl.includes("downloadly.ir/download")) {
         await prisma.ingestionBatch.update({
           where: { id: batch.id },
           data: {
@@ -368,7 +368,7 @@ export async function startDubbingPipeline({
           "SUCCESS"
         );
       } else {
-        throw new Error("هیچ فایل ویدیویی از آرشیو دانلودلی استخراج نشد و لینک ویدیوی مستقیم نیز مشخص نیست.");
+        throw new Error("هیچ فایل ویدیویی از آرشیو دانلودلی استخراج نشد. لطفاً درستی لینک دوره را بررسی نمایید.");
       }
 
       if (!usJobId) {

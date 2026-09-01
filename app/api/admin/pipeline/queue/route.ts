@@ -110,7 +110,7 @@ export async function POST(request: Request) {
 
     if (action === "START_NEW") {
       const pipelineResult = await startDubbingPipeline({
-        videoUrl: sourceUrl,
+        sourceUrl: sourceUrl,
         titleFa: courseTitle || "دوره جدید آموزشی",
         voiceGender: voiceGender || "male"
       });
