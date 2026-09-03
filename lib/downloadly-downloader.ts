@@ -97,12 +97,34 @@ export async function downloadFileStream(url: string, destPath: string, timeoutS
       resolveParts.push(`--resolve "${host}:443:${ip}" --resolve "${host}:80:${ip}"`);
     }
   }
-  const resolveArgs = resolveParts.join(" ");
+  const maxResumeAttempts = 12;
 
-  // Execute curl with resume (-C -), follow-redirects (-L), retry and pre-resolved IPs
-  const cmd = `curl -L -C - --fail --retry 3 --connect-timeout 30 --max-time ${timeoutSec} ${resolveArgs} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${targetUrl}"`;
-  console.log(`[Downloader] Executing curl download: ${cmd.substring(0, 160)}...`);
-  await execPromise(cmd);
+  for (let attempt = 1; attempt <= maxResumeAttempts; attempt++) {
+    // If previous attempt failed with resolveArgs, try standard DNS on later attempts
+    const currentResolveArgs = attempt > 2 ? "" : resolveArgs;
+    const cmd = `curl -L -C - --fail --connect-timeout 45 --max-time ${timeoutSec} ${currentResolveArgs} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${targetUrl}"`;
+
+    try {
+      console.log(`[Downloader] Download attempt ${attempt}/${maxResumeAttempts} for ${path.basename(destPath)}...`);
+      await execPromise(cmd);
+
+      if (fs.existsSync(destPath) && fs.statSync(destPath).size > 5000) {
+        console.log(`[Downloader] Download finished successfully: ${path.basename(destPath)} (${(fs.statSync(destPath).size / (1024*1024)).toFixed(1)} MB)`);
+        break;
+      }
+    } catch (err: any) {
+      const currentSize = fs.existsSync(destPath) ? fs.statSync(destPath).size : 0;
+      const sizeMb = (currentSize / (1024 * 1024)).toFixed(1);
+      console.warn(`[Downloader] Attempt ${attempt} interrupted (${err.message.substring(0, 120)}). Downloaded so far: ${sizeMb} MB. Resuming...`);
+
+      if (attempt < maxResumeAttempts) {
+        // Pause briefly and let -C - resume from the exact byte downloaded
+        await new Promise((r) => setTimeout(r, 4000));
+        continue;
+      }
+      throw err;
+    }
+  }
 
   if (!fs.existsSync(destPath) || fs.statSync(destPath).size < 1000) {
     throw new Error("فایل دانلود شده ناقص یا نامعتبر است.");
