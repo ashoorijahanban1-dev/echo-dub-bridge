@@ -97,6 +97,7 @@ export async function downloadFileStream(url: string, destPath: string, timeoutS
       resolveParts.push(`--resolve "${host}:443:${ip}" --resolve "${host}:80:${ip}"`);
     }
   }
+  const resolveArgs = resolveParts.join(" ");
   const maxResumeAttempts = 12;
 
   for (let attempt = 1; attempt <= maxResumeAttempts; attempt++) {
