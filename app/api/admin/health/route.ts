@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const US_ENGINE_HEALTH_URL = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
+const US_ENGINE_HEALTH_URL = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://ai.rpim.ir";
 
 export async function GET() {
   const startTotal = Date.now();

@@ -85,16 +85,11 @@ export async function GET(
           }
         });
 
-        if (episode?.telegramFileId && process.env.TELEGRAM_BOT_TOKEN) {
-          // Use Telegram Bot API getFile to get download URL
-          const tgRes = await fetch(
-            `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${episode.telegramFileId}`
-          );
-          const tgJson = await tgRes.json() as any;
-          if (tgJson.ok && tgJson.result?.file_path) {
-            const telegramFileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${tgJson.result.file_path}`;
-            return NextResponse.redirect(telegramFileUrl, 307);
-          }
+        if (episode?.telegramFileId) {
+          // Stream via US AI Engine Telegram Stream Proxy (unfiltered, full HTTP Range support!)
+          const usEngineUrl = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://ai.rpim.ir";
+          const streamUrl = `${usEngineUrl}/api/v1/stream/${episode.telegramFileId}`;
+          return NextResponse.redirect(streamUrl, 307);
         }
       } catch (tgErr) {
         console.error("Telegram CDN redirect error:", tgErr);

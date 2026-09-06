@@ -38,6 +38,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+RUN mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma
 
 EXPOSE 3000
 

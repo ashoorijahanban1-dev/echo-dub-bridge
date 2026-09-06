@@ -2,8 +2,8 @@ import http from "http";
 import fs from "fs";
 import path from "path";
 
-const US_ENGINE_IP = "209.145.63.253";
-const US_ENGINE_HOST_HEADER = "75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
+const US_ENGINE_IP = process.env.US_ENGINE_IP || "209.145.63.253";
+const US_ENGINE_HOST_HEADER = process.env.US_ENGINE_HOST_HEADER || "ai.rpim.ir";
 
 export interface SubmitJobParams {
   video_url: string;

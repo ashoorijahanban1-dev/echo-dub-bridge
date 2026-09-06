@@ -193,6 +193,16 @@ export async function startDubbingPipeline({
           // Extract with official unrar
           const extractDir = path.join(process.cwd(), "storage", "extracted", batch.id);
           const extractedVideos = await extractRarArchive(part1Path, extractDir);
+
+          // CRITICAL: Immediately delete downloaded RAR parts to prevent disk exhaustion!
+          try {
+            if (fs.existsSync(downloadDir)) {
+              fs.rmSync(downloadDir, { recursive: true, force: true });
+              console.log(`[Cleaner] Immediately deleted RAR parts in: ${downloadDir}`);
+            }
+          } catch (delErr: any) {
+            console.warn(`[Cleaner] Warning deleting RAR parts: ${delErr.message}`);
+          }
           
           await logPipelineEvent(
             batch.id,
@@ -228,10 +238,16 @@ export async function startDubbingPipeline({
               const destVideo = path.join(courseMediaDir, epFilename);
               try {
                 if (!fs.existsSync(destVideo)) {
-                  fs.copyFileSync(srcVideo, destVideo);
+                  try {
+                    fs.renameSync(srcVideo, destVideo);
+                  } catch (renameErr) {
+                    fs.copyFileSync(srcVideo, destVideo);
+                    fs.unlinkSync(srcVideo);
+                  }
                 }
-              } catch (copyErr) {
-                console.error("Failed to copy video to course media dir:", copyErr);
+                extractedVideos[i] = destVideo;
+              } catch (moveErr) {
+                console.error("Failed to move video to course media dir:", moveErr);
               }
 
               const cleanTitle = epFilename.replace(/\.mp4$/i, "").replace(/^\d+[\.\-\s]+/, "").trim() || `جلسه ${i + 1}`;
@@ -544,6 +560,16 @@ export async function startDubbingPipeline({
           currentStage: `❌ خطا در خط تولید: ${err.message}`
         }
       });
+    } finally {
+      // Guaranteed cleanup of temporary downloads and extraction directories
+      try {
+        const tempDl = path.join(process.cwd(), "storage", "downloads", batch.id);
+        const tempEx = path.join(process.cwd(), "storage", "extracted", batch.id);
+        if (fs.existsSync(tempDl)) fs.rmSync(tempDl, { recursive: true, force: true });
+        if (fs.existsSync(tempEx)) fs.rmSync(tempEx, { recursive: true, force: true });
+      } catch (cleanErr: any) {
+        console.warn(`[Orchestrator] Finally cleanup warning: ${cleanErr.message}`);
+      }
     }
   })();
 

@@ -486,7 +486,12 @@ const COURSES_DATA = [
 ];
 
 async function main() {
-  console.log("Seeding and updating EchoDub Web Platform database with full rich courses...");
+  const existingCount = await prisma.course.count();
+  if (existingCount > 0) {
+    console.log(`[Seed Guard] Database already has ${existingCount} courses. Skipping seed to protect live data.`);
+    return;
+  }
+  console.log("Seeding initial EchoDub Web Platform courses for empty database...");
 
   for (const courseData of COURSES_DATA) {
     const { chapters, ...cFields } = courseData;
