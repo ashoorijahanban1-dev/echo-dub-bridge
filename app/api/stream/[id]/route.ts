@@ -91,6 +91,10 @@ export async function GET(
           const streamUrl = `${usEngineUrl}/api/v1/stream/${episode.telegramFileId}`;
           return NextResponse.redirect(streamUrl, 307);
         }
+
+        if (episode?.originalVideoUrl && episode.originalVideoUrl.startsWith("http")) {
+          return NextResponse.redirect(episode.originalVideoUrl, 307);
+        }
       } catch (tgErr) {
         console.error("Telegram CDN redirect error:", tgErr);
       }

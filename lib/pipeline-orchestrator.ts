@@ -466,19 +466,48 @@ export async function startDubbingPipeline({
         }
       }
 
-      if (!finalResult || !finalResult.telegram) {
-        throw new Error("فرآیند دوبله در سرور آمریکا به موقع پایان نیافت یا متادیتای تلگرام بازگردانده نشد.");
+      if (!finalResult) {
+        throw new Error("فرآیند دوبله در سرور آمریکا به موقع پایان نیافت.");
       }
 
-      const tgData = finalResult.telegram;
-      await logPipelineEvent(
-        batch.id,
-        "TELEGRAM",
-        `ویدیوی دوبله شده در کانال تلگرام بارگذاری شد (پیام: ${tgData.message_id} | فایل: ${tgData.file_id?.slice(0, 15)}...)`,
-        "SUCCESS"
-      );
+      const tgData = finalResult.telegram || {};
+      const outputVideoPath = finalResult.output_video_path;
+      const outputFilename = outputVideoPath ? path.basename(outputVideoPath) : "";
 
-      // Step D: Update Episode 1 with dubbed Telegram & Duration metadata
+      // Step D: Download the rendered Persian dubbed video to Iran server for local zero-latency playback!
+      if (outputFilename && realExtractedVideoPath) {
+        try {
+          await logPipelineEvent(
+            batch.id,
+            "DOWNLOADER",
+            `در حال همگام‌سازی ویدیوی دوبله شده فارسی از سرور آمریکا به سرور ایران...`,
+            "INFO"
+          );
+          const usDownloadUrl = `http://ai.rpim.ir/api/v1/download/output/${encodeURIComponent(outputFilename)}`;
+          const downloadCmd = `curl -sL --connect-timeout 30 --max-time 600 -o "${realExtractedVideoPath}.tmp" "${usDownloadUrl}" && mv "${realExtractedVideoPath}.tmp" "${realExtractedVideoPath}"`;
+          const { execSync } = require("child_process");
+          execSync(downloadCmd);
+          await logPipelineEvent(
+            batch.id,
+            "DOWNLOADER",
+            `ویدیوی دوبله شده فارسی با موفقیت روی سرور ایران ذخیره و آماده پخش اینترانتی شد.`,
+            "SUCCESS"
+          );
+        } catch (syncErr: any) {
+          console.warn("Could not sync dubbed video back to Iran server locally:", syncErr.message);
+        }
+      }
+
+      if (tgData.uploaded) {
+        await logPipelineEvent(
+          batch.id,
+          "TELEGRAM",
+          `ویدیوی دوبله شده در کانال تلگرام بارگذاری شد (پیام: ${tgData.message_id} | فایل: ${tgData.file_id?.slice(0, 15)}...)`,
+          "SUCCESS"
+        );
+      }
+
+      // Step E: Update Episode 1 with dubbed Video & metadata
       let epChapter = await prisma.chapter.findFirst({ where: { courseId: course.id } });
       if (!epChapter) {
         epChapter = await prisma.chapter.create({
@@ -491,13 +520,16 @@ export async function startDubbingPipeline({
       }
 
       const ep1Id = `${targetSlug}-ep1`;
+      const directUsStreamUrl = outputFilename ? `http://ai.rpim.ir/api/v1/stream/output/${encodeURIComponent(outputFilename)}` : null;
+
       await prisma.episode.upsert({
         where: { id: ep1Id },
         update: {
           telegramFileId: tgData.file_id || null,
           telegramMessageId: tgData.message_id ? Number(tgData.message_id) : null,
           durationSeconds: Math.round(finalResult.duration_seconds || 480),
-          streamUrl: `/api/stream/${ep1Id}`
+          streamUrl: `/api/stream/${ep1Id}`,
+          originalVideoUrl: realExtractedVideoPath ? `/storage/courses/${targetSlug}/${path.basename(realExtractedVideoPath)}` : directUsStreamUrl
         },
         create: {
           id: ep1Id,
@@ -507,6 +539,7 @@ export async function startDubbingPipeline({
           episodeNumber: 1,
           durationSeconds: Math.round(finalResult.duration_seconds || 480),
           streamUrl: `/api/stream/${ep1Id}`,
+          originalVideoUrl: realExtractedVideoPath ? `/storage/courses/${targetSlug}/${path.basename(realExtractedVideoPath)}` : directUsStreamUrl,
           telegramFileId: tgData.file_id || null,
           telegramMessageId: tgData.message_id ? Number(tgData.message_id) : null,
           isFreePreview: true
@@ -520,12 +553,12 @@ export async function startDubbingPipeline({
         "SUCCESS"
       );
 
-      // Step E: Complete IngestionBatch in DB
+      // Step F: Complete IngestionBatch in DB
       await prisma.ingestionBatch.update({
         where: { id: batch.id },
         data: {
           status: "COMPLETED",
-          currentStage: `🎉 دوبله کامل شد و در تلگرام (پیام ${tgData.message_id}) و سایت منتشر گردید!`,
+          currentStage: `🎉 دوبله کامل شد و با صدای اختصاصی هوش مصنوعی در سایت منتشر گردید!`,
           completedEpisodes: 1
         }
       });
