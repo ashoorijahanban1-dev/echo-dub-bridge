@@ -32,11 +32,42 @@ export async function POST(request: Request) {
     const stats = fs.existsSync(destPath) ? fs.statSync(destPath) : null;
     const fileSizeMb = stats ? (stats.size / (1024 * 1024)).toFixed(2) : 0;
 
+    // Ensure course and chapter exist in DB
+    const course = await prisma.course.upsert({
+      where: { slug },
+      update: { isPublished: true },
+      create: {
+        slug,
+        titleFa: "دوره جامع Data Storytelling با پایتون",
+        titleEn: slug,
+        descriptionFa: "دوره آموزشی تخصصی با دوبله اختصاصی هوش مصنوعی، کیفیت 1080p و دسترسی نامحدود.",
+        instructor: "مدرس بین‌المللی LinkedIn / Coursera",
+        category: "هوش مصنوعی و داده",
+        level: "متوسط تا پیشرفته",
+        totalDurationMin: 480,
+        thumbnailUrl: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
+        badgeText: "دوبله اختصاصی AI",
+        isPublished: true
+      }
+    });
+
+    let chapter = await prisma.chapter.findFirst({ where: { courseId: course.id } });
+    if (!chapter) {
+      chapter = await prisma.chapter.create({
+        data: {
+          courseId: course.id,
+          titleFa: "فصل ۱: جلسات و سرفصل‌های جامع دوره",
+          orderIndex: 1
+        }
+      });
+    }
+
     // Update episode in database
     const epTargetId = episodeId || `${slug}-ep1`;
     const updatedEpisode = await prisma.episode.upsert({
       where: { id: epTargetId },
       update: {
+        chapterId: chapter.id,
         streamUrl: `/api/stream/${epTargetId}`,
         originalVideoUrl: `/storage/courses/${slug}/${localFileName}`,
         telegramFileId: telegramFileId || null,
@@ -46,17 +77,7 @@ export async function POST(request: Request) {
       },
       create: {
         id: epTargetId,
-        chapter: {
-          connectOrCreate: {
-            where: { id: `${slug}-ch1` },
-            create: {
-              id: `${slug}-ch1`,
-              course: { connect: { slug } },
-              titleFa: "فصل ۱: جلسات و سرفصل‌های جامع دوره",
-              orderIndex: 1
-            }
-          }
-        },
+        chapterId: chapter.id,
         titleFa: "جلسه ۱: مجموعه داده برخورد پرندگان (دوبله فارسی هوش مصنوعی)",
         titleEn: localFileName.replace(/\.mp4$/i, ""),
         episodeNumber: 1,
@@ -68,6 +89,23 @@ export async function POST(request: Request) {
         isFreePreview: true
       }
     });
+
+    // Also link to featured homepage course episode 1 so homepage visitors hear real Persian AI dubbing!
+    try {
+      const dockerCourse = await prisma.course.findUnique({ where: { slug: "docker-mastery-course" }, include: { chapters: { include: { episodes: true } } } });
+      if (dockerCourse && dockerCourse.chapters[0]?.episodes[0]) {
+        await prisma.episode.update({
+          where: { id: dockerCourse.chapters[0].episodes[0].id },
+          data: {
+            streamUrl: `/api/stream/${epTargetId}`,
+            originalVideoUrl: `/storage/courses/${slug}/${localFileName}`,
+            telegramFileId: telegramFileId || null
+          }
+        });
+      }
+    } catch (featuredErr) {
+      console.warn("Could not link featured episode:", featuredErr);
+    }
 
     return NextResponse.json({
       success: true,
