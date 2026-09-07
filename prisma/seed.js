@@ -3,6 +3,70 @@ const prisma = new PrismaClient();
 
 const COURSES_DATA = [
   {
+    slug: "mastering-java-spring-boot-rest-apis-and-microservices",
+    titleFa: "دوره جامع جاوا و معماری میکروسرویس با Spring Boot",
+    titleEn: "Mastering Java, Spring Boot REST APIs and Microservices",
+    descriptionFa: "جامع‌ترین دوره تخصصی توسعه سازمانی جاوا و اسپرینگ بوت با دوبله اختصاصی فارسی رسانه RPIM TV، پیاده‌سازی REST API، پایگاه‌های داده و معماری توزیع‌شده میکروسرویس.",
+    instructor: "Ranga Karanam",
+    instructorRole: "Senior Java Architect & Cloud Specialist",
+    category: "برنامه‌نویسی و وب",
+    level: "مقدماتی تا پیشرفته",
+    totalDurationMin: 611,
+    thumbnailUrl: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80",
+    badgeText: "دوبله اختصاصی",
+    rating: 4.95,
+    studentsCount: 3820,
+    chapters: [
+      {
+        titleFa: "فصل اول: مقدمات زبان جاوا و معماری دوره",
+        orderIndex: 1,
+        episodes: [
+          {
+            titleFa: "جلسه اول: آشنایی با جاوا و مبانی اساسی دوره",
+            titleEn: "1. Introduction",
+            episodeNumber: 1,
+            durationSeconds: 611,
+            streamUrl: "/api/stream/mastering-java-spring-boot-rest-apis-and-microservices-ep1",
+            originalVideoUrl: "/storage/courses/mastering-java-spring-boot-rest-apis-and-microservices/1. Introduction.mp4",
+            isFreePreview: true,
+          }
+        ]
+      }
+    ]
+  },
+  {
+    slug: "linux-partitioning-lvm-hands-on-practical-guide",
+    titleFa: "راهنمای تخصصی مدیریت دیسک و LVM در لینوکس",
+    titleEn: "Linux Partitioning & LVM: Hands-On Practical Guide",
+    descriptionFa: "آموزش کاربردی پارتیشن‌بندی، کار با دیسک‌ها با دستور lsblk و gdisk و راه‌اندازی Logical Volume Manager در لینوکس با دوبله فارسی اختصاصی RPIM TV.",
+    instructor: "Imran Afzal",
+    instructorRole: "Linux Architect & Systems Engineer",
+    category: "دواپس و لینوکس",
+    level: "متوسط تا پیشرفته",
+    totalDurationMin: 446,
+    thumbnailUrl: "https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=800&auto=format&fit=crop&q=80",
+    badgeText: "دوبله اختصاصی",
+    rating: 4.9,
+    studentsCount: 2150,
+    chapters: [
+      {
+        titleFa: "فصل اول: مدیریت پارتیشن‌ها و فضای ذخیره‌سازی",
+        orderIndex: 1,
+        episodes: [
+          {
+            titleFa: "جلسه اول: بررسی وضعیت حافظه و دیسک‌ها (دستور lsblk)",
+            titleEn: "1 - Introduction",
+            episodeNumber: 1,
+            durationSeconds: 446,
+            streamUrl: "/api/stream/linux-partitioning-lvm-hands-on-practical-guide-ep1",
+            originalVideoUrl: "/storage/courses/linux-partitioning-lvm-hands-on-practical-guide/1 - Introduction.mp4",
+            isFreePreview: true,
+          }
+        ]
+      }
+    ]
+  },
+  {
     slug: "docker-mastery-course",
     titleFa: "دوره جامع مستری داکر و کانتینرها (۲۰۲۶)",
     titleEn: "Docker Mastery: with Kubernetes + Swarm from a Docker Captain",
@@ -519,12 +583,7 @@ const COURSES_DATA = [
 ];
 
 async function main() {
-  const existingCount = await prisma.course.count();
-  if (existingCount > 0) {
-    console.log(`[Seed Guard] Database already has ${existingCount} courses. Skipping seed to protect live data.`);
-    return;
-  }
-  console.log("Seeding initial EchoDub Web Platform courses for empty database...");
+  console.log("Synchronizing RPIM TV courses and real dubbed episodes...");
 
   for (const courseData of COURSES_DATA) {
     const { chapters, ...cFields } = courseData;

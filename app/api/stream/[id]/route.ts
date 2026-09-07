@@ -3,75 +3,43 @@ import { prisma } from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
 
-function findLocalVideoFile(episode: any, id: string): string | null {
+function findLocalDubbedFile(episode: any, id: string): string | null {
   const candidatePaths: string[] = [];
-
-  // 1. From episode.originalVideoUrl
-  if (episode?.originalVideoUrl) {
-    const raw = episode.originalVideoUrl;
-    const cleanRel = raw.replace(/^\/app\//, "").replace(/^\//, "");
-    candidatePaths.push(
-      path.join("/app", cleanRel),
-      path.join(process.cwd(), cleanRel),
-      path.join("/app", raw),
-      path.join(process.cwd(), raw),
-      raw
-    );
-  }
-
-  // 2. From course slug
-  const slug = episode?.chapter?.course?.slug || (id.includes("-ep") ? id.split("-ep")[0] : null);
-  if (slug) {
-    const courseDirs = [
-      path.join("/app", "storage", "courses", slug),
-      path.join(process.cwd(), "storage", "courses", slug)
-    ];
-    for (const cDir of courseDirs) {
-      if (fs.existsSync(cDir)) {
-        try {
-          const files = fs.readdirSync(cDir);
-          const epNum = episode?.episodeNumber || 1;
-          const match = files.find(f => f.endsWith(".mp4") && (
-            f.startsWith(`${epNum}.`) ||
-            f.startsWith(`0${epNum}.`) ||
-            f.startsWith(`${epNum} `) ||
-            f.startsWith(`0${epNum} `) ||
-            (episode?.titleEn && f.includes(episode.titleEn)) ||
-            files.length === 1
-          )) || files.find(f => f.endsWith(".mp4"));
-
-          if (match) {
-            candidatePaths.push(path.join(cDir, match));
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  // 3. Scan storage/courses subfolders
-  const storageCourseDirs = [
-    path.join("/app", "storage", "courses"),
-    path.join(process.cwd(), "storage", "courses")
+  const outputDirs = [
+    path.join("/app", "storage", "output"),
+    path.join(process.cwd(), "storage", "output")
   ];
-  for (const rootDir of storageCourseDirs) {
-    if (fs.existsSync(rootDir)) {
+
+  const targetBasename = episode?.originalVideoUrl
+    ? path.basename(episode.originalVideoUrl).toLowerCase()
+    : "";
+  const titleEn = episode?.titleEn ? episode.titleEn.toLowerCase() : "";
+  const epNum = episode?.episodeNumber || 1;
+
+  for (const oDir of outputDirs) {
+    if (fs.existsSync(oDir)) {
       try {
-        const subdirs = fs.readdirSync(rootDir);
-        for (const sub of subdirs) {
-          const subPath = path.join(rootDir, sub);
-          if (fs.statSync(subPath).isDirectory()) {
-            const files = fs.readdirSync(subPath);
-            const m = files.find(f => f.endsWith(".mp4") && (id.includes(sub) || (slug && sub.includes(slug))));
-            if (m) {
-              candidatePaths.push(path.join(subPath, m));
-            }
-          }
+        const files = fs.readdirSync(oDir);
+        const match = files.find(f => {
+          const fl = f.toLowerCase();
+          if (!fl.endsWith(".mp4")) return false;
+          return (
+            (targetBasename && fl.includes(targetBasename)) ||
+            (titleEn && fl.includes(titleEn)) ||
+            fl.includes(`_${epNum}.`) ||
+            fl.includes(`_${epNum} `) ||
+            fl.includes(`-${epNum}.`) ||
+            fl.includes(`-${epNum} `) ||
+            fl.includes(id.toLowerCase())
+          );
+        });
+        if (match) {
+          candidatePaths.push(path.join(oDir, match));
         }
       } catch (e) {}
     }
   }
 
-  // Test candidate paths in order
   for (const p of candidatePaths) {
     if (p && fs.existsSync(p)) {
       try {
@@ -127,26 +95,33 @@ export async function GET(
       return NextResponse.redirect(episode.streamUrl, 307);
     }
 
-    // 2. Locate local file on disk
-    targetFilePath = findLocalVideoFile(episode, id);
+    // 2. Locate local DUBBED file on disk (ONLY from storage/output, NEVER raw un-dubbed files)
+    targetFilePath = findLocalDubbedFile(episode, id);
 
-    // 3. Fallback: If not on local disk yet, proxy stream from US AI Engine / Telegram CDN
+    // 3. Fallback: If not on local disk yet, proxy dubbed stream from US AI Engine / Telegram CDN
     if (!targetFilePath) {
       const usEngineIp = process.env.US_ENGINE_IP || "209.145.63.253";
       const usHostHeader = process.env.US_ENGINE_HOST_HEADER || "ai.rpim.ir";
 
-      const outputName = episode?.originalVideoUrl 
-        ? path.basename(episode.originalVideoUrl) 
-        : (episode?.titleEn ? `${episode.titleEn}.mp4` : null);
-
-      let targetUsUrl = "";
-      if (outputName) {
-        targetUsUrl = `http://${usEngineIp}/api/v1/stream/output/${encodeURIComponent(outputName)}`;
-      } else if (episode?.telegramFileId) {
-        targetUsUrl = `http://${usEngineIp}/api/v1/stream/${episode.telegramFileId}`;
+      const candidateNames: string[] = [];
+      if (episode?.originalVideoUrl) {
+        candidateNames.push(path.basename(episode.originalVideoUrl));
       }
+      if (episode?.titleEn) {
+        candidateNames.push(`${episode.titleEn}.mp4`);
+        candidateNames.push(episode.titleEn);
+      }
+      if (id.includes("linux") || id.includes("lvm")) {
+        candidateNames.push("1 - Introduction.mp4");
+      }
+      if (id.includes("java") || id.includes("spring")) {
+        candidateNames.push("1. Introduction.mp4");
+      }
+      candidateNames.push(`${id}.mp4`);
 
-      if (targetUsUrl) {
+      // Try candidates in order against US dubbing engine
+      for (const outputName of candidateNames) {
+        const targetUsUrl = `http://${usEngineIp}/api/v1/stream/output/${encodeURIComponent(outputName)}`;
         try {
           const upstreamHeaders: Record<string, string> = {
             "Host": usHostHeader,
@@ -180,7 +155,47 @@ export async function GET(
             });
           }
         } catch (proxyErr) {
-          console.error("US Engine proxy stream error:", proxyErr);
+          console.error(`US Engine proxy stream error for ${outputName}:`, proxyErr);
+        }
+      }
+
+      // Check Telegram CDN if fileId exists
+      if (episode?.telegramFileId) {
+        const targetUsUrl = `http://${usEngineIp}/api/v1/stream/${episode.telegramFileId}`;
+        try {
+          const upstreamHeaders: Record<string, string> = {
+            "Host": usHostHeader,
+            "User-Agent": "RPIM-Internal-Stream-Proxy/1.0"
+          };
+          const rangeHeader = request.headers.get("range");
+          if (rangeHeader) {
+            upstreamHeaders["Range"] = rangeHeader;
+          }
+
+          const upstreamRes = await fetch(targetUsUrl, {
+            headers: upstreamHeaders,
+            cache: "no-store"
+          });
+
+          if (upstreamRes.ok || upstreamRes.status === 206) {
+            const resHeaders = new Headers();
+            resHeaders.set("Content-Type", upstreamRes.headers.get("content-type") || "video/mp4");
+            resHeaders.set("Accept-Ranges", "bytes");
+            resHeaders.set("Access-Control-Allow-Origin", "*");
+            resHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
+
+            const contentRange = upstreamRes.headers.get("content-range");
+            const contentLength = upstreamRes.headers.get("content-length");
+            if (contentRange) resHeaders.set("Content-Range", contentRange);
+            if (contentLength) resHeaders.set("Content-Length", contentLength);
+
+            return new NextResponse(upstreamRes.body, {
+              status: upstreamRes.status,
+              headers: resHeaders
+            });
+          }
+        } catch (tgErr) {
+          console.error("Telegram CDN stream error:", tgErr);
         }
       }
 
