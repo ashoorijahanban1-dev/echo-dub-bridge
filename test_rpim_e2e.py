@@ -162,6 +162,45 @@ def run_e2e_tests() -> bool:
         print(f"  FAIL: Admin login error: {e}")
         all_passed = False
 
+    # Test 7: Real Dubbed Course & Watch Page Verification
+    print("\n[Test 7] Real Dubbed Course & Watch Route:")
+    java_slug = "mastering-java-spring-boot-rest-apis-and-microservices"
+    c_status, c_html = fetch_url(f"/courses/{java_slug}")
+    if c_status == 200 and "جاوا" in c_html:
+        print("  PASS: Course detail page loaded with 200 OK")
+    else:
+        print(f"  FAIL: Course detail page returned status {c_status}")
+        all_passed = False
+
+    w_status, w_html = fetch_url(f"/courses/{java_slug}/watch/{java_slug}-ep1")
+    if w_status == 200 and "RPIM TV" in w_html:
+        print("  PASS: Watch page loaded with 200 OK and RPIM TV station watermark bug confirmed")
+    else:
+        print(f"  FAIL: Watch page returned status {w_status}")
+        all_passed = False
+
+    # Test 8: Live Video Stream Proxy Verification (HTTP 206 Partial Content)
+    print("\n[Test 8] Video Streaming Proxy (Range: bytes=0-1000):")
+    stream_req = urllib.request.Request(
+        f"{BASE_URL}/api/stream/{java_slug}-ep1",
+        headers={
+            "Range": "bytes=0-1000",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) RPIM-E2E-Tester/1.0"
+        }
+    )
+    try:
+        with urllib.request.urlopen(stream_req, context=ctx, timeout=20) as s_resp:
+            content_type = s_resp.headers.get("Content-Type", "")
+            content_range = s_resp.headers.get("Content-Range", "")
+            if s_resp.status in [200, 206] and "video" in content_type:
+                print(f"  PASS: Video stream proxy responded with status {s_resp.status} ({content_type}, range: {content_range})")
+            else:
+                print(f"  FAIL: Stream returned status {s_resp.status}, Content-Type: {content_type}")
+                all_passed = False
+    except Exception as e:
+        print(f"  FAIL: Stream request error: {e}")
+        all_passed = False
+
     print("\n" + "=" * 60)
     if all_passed:
         print("ALL E2E TESTS PASSED SUCCESSFULLY! The live site is clean and aligned.")

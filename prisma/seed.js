@@ -240,6 +240,39 @@ const COURSES_DATA = [
     ]
   },
   {
+    slug: "mastering-java-spring-boot-rest-apis-and-microservices",
+    titleFa: "آموزش جامع جاوا و اسپرینگ‌بوت (REST APIs و میکروسرویس‌ها)",
+    titleEn: "Udemy – Mastering Java + Spring Boot: REST APIs and Microservices 2026-6",
+    descriptionFa: "دوره جامع و تخصصی معماری سرویس‌گرا با Java 21، فریمورک Spring Boot 3، ساخت میکروسرویس‌های مقیاس‌پذیر و اتصال به دیتابیس با دوبله اختصاصی فارسی RPIM TV.",
+    instructor: "مدرس بین‌المللی Udemy",
+    instructorRole: "Enterprise Java Architect",
+    category: "برنامه‌نویسی و وب",
+    level: "مقدماتی تا پیشرفته",
+    totalDurationMin: 660,
+    thumbnailUrl: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
+    badgeText: "دوبله اختصاصی",
+    rating: 4.95,
+    studentsCount: 3850,
+    chapters: [
+      {
+        titleFa: "فصل ۱: مبانی، معماری و نقشه راه جاوا و اسپرینگ‌بوت",
+        orderIndex: 1,
+        episodes: [
+          {
+            titleFa: "جلسه ۱: معرفی دوره و نقشه راه جاوا و اسپرینگ‌بوت",
+            titleEn: "1. Introduction",
+            episodeNumber: 1,
+            durationSeconds: 611,
+            streamUrl: "/api/stream/mastering-java-spring-boot-rest-apis-and-microservices-ep1",
+            originalVideoUrl: "http://ai.rpim.ir/api/v1/stream/output/job_up_1264503028_1.%20Introduction.mp4",
+            telegramFileId: "BAACAgEAAyEGAAMBCTrUdwADJWqd_sFEbahuavLh31yPqRta8qDNAAJMBgACbF3wRMoq7LMbiRwgPQQ",
+            isFreePreview: true,
+          }
+        ]
+      }
+    ]
+  },
+  {
     slug: "react-fullstack-bootcamp-build-job-portal-marketplace-app",
     titleFa: "بوت‌کمپ فول‌استک ری‌اکت: ساخت پورتال کاریابی و مارکت‌پلیس (۲۰۲۶)",
     titleEn: "React Fullstack Bootcamp - Build Job Portal & Marketplace App 2026",
@@ -551,7 +584,9 @@ async function main() {
             titleEn: epData.titleEn,
             episodeNumber: epData.episodeNumber,
             durationSeconds: epData.durationSeconds,
-            streamUrl: "/api/stream/video",
+            streamUrl: epData.streamUrl || "/api/stream/video",
+            originalVideoUrl: epData.originalVideoUrl || null,
+            telegramFileId: epData.telegramFileId || null,
             isFreePreview: epData.isFreePreview,
           }
         });

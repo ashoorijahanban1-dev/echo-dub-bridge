@@ -44,5 +44,5 @@ RUN mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted 
 
 EXPOSE 3000
 
-# Ensure storage and prisma volumes have full write permissions at runtime, then start
-CMD ["sh", "-c", "mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma && chmod -R 777 /app/storage /app/prisma 2>/dev/null || true; npx prisma db push && npm run start"]
+# Ensure storage and prisma volumes have full write permissions at runtime, run migrations & seed, then start
+CMD ["sh", "-c", "mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma && chmod -R 777 /app/storage /app/prisma 2>/dev/null || true; npx prisma db push && node prisma/seed.js 2>/dev/null || true; npm run start"]

@@ -130,22 +130,58 @@ export async function GET(
     // 2. Locate local file on disk
     targetFilePath = findLocalVideoFile(episode, id);
 
-    // 3. Fallback: If not on local disk yet, check US AI Engine direct stream
+    // 3. Fallback: If not on local disk yet, proxy stream from US AI Engine / Telegram CDN
     if (!targetFilePath) {
-      const usEngineUrl = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://ai.rpim.ir";
+      const usEngineIp = process.env.US_ENGINE_IP || "209.145.63.253";
+      const usHostHeader = process.env.US_ENGINE_HOST_HEADER || "ai.rpim.ir";
 
-      // If we have an original filename or title, stream from US Engine
       const outputName = episode?.originalVideoUrl 
         ? path.basename(episode.originalVideoUrl) 
         : (episode?.titleEn ? `${episode.titleEn}.mp4` : null);
 
+      let targetUsUrl = "";
       if (outputName) {
-        return NextResponse.redirect(`${usEngineUrl}/api/v1/stream/output/${encodeURIComponent(outputName)}`, 307);
+        targetUsUrl = `http://${usEngineIp}/api/v1/stream/output/${encodeURIComponent(outputName)}`;
+      } else if (episode?.telegramFileId) {
+        targetUsUrl = `http://${usEngineIp}/api/v1/stream/${episode.telegramFileId}`;
       }
 
-      // If telegramFileId is set
-      if (episode?.telegramFileId) {
-        return NextResponse.redirect(`${usEngineUrl}/api/v1/stream/${episode.telegramFileId}`, 307);
+      if (targetUsUrl) {
+        try {
+          const upstreamHeaders: Record<string, string> = {
+            "Host": usHostHeader,
+            "User-Agent": "RPIM-Internal-Stream-Proxy/1.0"
+          };
+          const rangeHeader = request.headers.get("range");
+          if (rangeHeader) {
+            upstreamHeaders["Range"] = rangeHeader;
+          }
+
+          const upstreamRes = await fetch(targetUsUrl, {
+            headers: upstreamHeaders,
+            cache: "no-store"
+          });
+
+          if (upstreamRes.ok || upstreamRes.status === 206) {
+            const resHeaders = new Headers();
+            resHeaders.set("Content-Type", upstreamRes.headers.get("content-type") || "video/mp4");
+            resHeaders.set("Accept-Ranges", "bytes");
+            resHeaders.set("Access-Control-Allow-Origin", "*");
+            resHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
+
+            const contentRange = upstreamRes.headers.get("content-range");
+            const contentLength = upstreamRes.headers.get("content-length");
+            if (contentRange) resHeaders.set("Content-Range", contentRange);
+            if (contentLength) resHeaders.set("Content-Length", contentLength);
+
+            return new NextResponse(upstreamRes.body, {
+              status: upstreamRes.status,
+              headers: resHeaders
+            });
+          }
+        } catch (proxyErr) {
+          console.error("US Engine proxy stream error:", proxyErr);
+        }
       }
 
       // Fallback to sample video if available

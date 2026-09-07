@@ -333,6 +333,17 @@ export default function VideoPlayer({
         )}
       </video>
 
+      {/* Permanent RPIM TV Broadcast Station Watermark (precision coverage for top-right source watermark) */}
+      <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none select-none">
+        <div className="flex items-center gap-2 px-3.5 py-1 rounded-lg bg-slate-950/95 backdrop-blur-md border border-cyan-500/50 text-white shadow-2xl min-w-[155px] justify-center">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-xs font-black tracking-widest text-cyan-300">RPIM TV</span>
+          <span className="text-[10px] text-slate-400 border-r border-slate-700 pr-2 font-medium">پخش اختصاصی</span>
+        </div>
+      </div>
 
       {/* Center Play/Pause Large Overlay Button on Click */}
       {!isPlaying && (
@@ -347,7 +358,7 @@ export default function VideoPlayer({
       )}
 
       {/* Top Bar (Title & Mode badge) */}
-      <div className={`absolute top-0 inset-x-0 p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+      <div className={`absolute top-0 inset-x-0 p-4 pl-4 pr-44 bg-gradient-to-b from-black/80 via-black/40 to-transparent transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs text-slate-400 font-medium">{courseTitle}</div>
