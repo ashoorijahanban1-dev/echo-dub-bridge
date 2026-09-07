@@ -40,12 +40,9 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
-RUN mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma && \
-    chown -R node:node /app/storage /app/prisma
-
-USER node
+RUN mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma
 
 EXPOSE 3000
 
-# Run prisma db push on startup if needed, then start Next.js
-CMD ["sh", "-c", "npx prisma db push && npm run start"]
+# Ensure storage and prisma volumes have full write permissions at runtime, then start
+CMD ["sh", "-c", "mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma && chmod -R 777 /app/storage /app/prisma 2>/dev/null || true; npx prisma db push && npm run start"]

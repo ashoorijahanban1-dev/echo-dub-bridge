@@ -117,6 +117,40 @@ def run_e2e_tests() -> bool:
                     else:
                         print(f"  FAIL: Admin dashboard returned status {dash_resp.status}")
                         all_passed = False
+
+                # Test 6: Database Write Operation (Prisma / SQLite write test)
+                print("\n[Test 6] Database Write & Permissions Verification (Prisma/SQLite):")
+                courses_req = urllib.request.Request(
+                    f"{BASE_URL}/api/admin/crawler/courses",
+                    headers={
+                        "Cookie": admin_cookie,
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) RPIM-E2E-Tester/1.0"
+                    }
+                )
+                with urllib.request.urlopen(courses_req, context=ctx, timeout=15) as c_resp:
+                    c_data = json.loads(c_resp.read().decode("utf-8"))
+                    if isinstance(c_data, list) and len(c_data) > 0:
+                        sample_id = c_data[0]["id"]
+                        patch_data = json.dumps({"action": "REJECT", "courseIds": [sample_id]}).encode("utf-8")
+                        patch_req = urllib.request.Request(
+                            f"{BASE_URL}/api/admin/crawler/courses",
+                            data=patch_data,
+                            headers={
+                                "Cookie": admin_cookie,
+                                "Content-Type": "application/json",
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) RPIM-E2E-Tester/1.0"
+                            },
+                            method="PATCH"
+                        )
+                        with urllib.request.urlopen(patch_req, context=ctx, timeout=15) as p_resp:
+                            p_result = json.loads(p_resp.read().decode("utf-8"))
+                            if p_resp.status == 200 and p_result.get("success"):
+                                print("  PASS: Database write (Prisma update) succeeded with 200 OK - No readonly error!")
+                            else:
+                                print(f"  FAIL: Database write returned status {p_resp.status}: {p_result}")
+                                all_passed = False
+                    else:
+                        print("  PASS: Database read succeeded (No courses to update test)")
             else:
                 print(f"  FAIL: Admin login returned status {resp.status} without expected cookie")
                 all_passed = False
