@@ -25,7 +25,7 @@ export default function CourseCard({
   level,
   totalDurationMin,
   thumbnailUrl,
-  badgeText = "دوبله اختصاصی AI",
+  badgeText = "دوبله اختصاصی",
   rating = 4.9,
   studentsCount = 1200,
   firstEpisodeId,

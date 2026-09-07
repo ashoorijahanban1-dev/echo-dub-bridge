@@ -1003,7 +1003,7 @@ export default function MissionControlAdminPage() {
                     <span className="w-3 h-3 rounded-full bg-yellow-500/80 inline-block" />
                     <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
                     <span className="text-slate-400 text-[11px] font-semibold mr-2">
-                      echo-dub-engine@iran-us-bridge
+                      rpim-engine@iran-us-bridge
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-500">tail -f /var/log/pipeline.log</span>
@@ -1012,7 +1012,7 @@ export default function MissionControlAdminPage() {
                 {/* Terminal Body */}
                 <div className="p-4 flex-1 overflow-y-auto space-y-2 text-slate-300 text-[11px] leading-relaxed">
                   <div className="text-slate-500">
-                    # EchoDub AI Autonomous Orchestrator v3.0 initialized.
+                    # RPIM TV AI Autonomous Orchestrator v3.0 initialized.
                   </div>
                   <div className="text-slate-500">
                     # Listening for active batches from Iran and US workers...

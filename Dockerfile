@@ -38,9 +38,12 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
-RUN mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma
+RUN mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma && \
+    chown -R node:node /app
+
+USER node
 
 EXPOSE 3000
 
-# Run prisma db push and seed on startup if needed, then start Next.js
-CMD ["sh", "-c", "npx prisma db push && node prisma/seed.js && npm run start"]
+# Run prisma db push on startup if needed, then start Next.js
+CMD ["sh", "-c", "npx prisma db push && npm run start"]

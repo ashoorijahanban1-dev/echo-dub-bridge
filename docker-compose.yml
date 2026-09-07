@@ -1,0 +1,35 @@
+services:
+  echodub-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: echodub_web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123456}
+      - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET:-echodub_admin_session_secret_super_secure_key_2026}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8773331933:AAHOavxMB4jHC6CTojqBXjLM13NG6ERh2Ic}
+      - TELEGRAM_CHANNEL_ID=${TELEGRAM_CHANNEL_ID:--1004449817719}
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET:-echodub_secure_internal_cluster_secret_2026}
+      - NEXT_PUBLIC_US_ENGINE_URL=${NEXT_PUBLIC_US_ENGINE_URL:-http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io}
+      - US_ENGINE_IP=${US_ENGINE_IP:-209.145.63.253}
+      - US_ENGINE_HOST_HEADER=${US_ENGINE_HOST_HEADER:-ai.rpim.ir}
+      - DATABASE_URL=${DATABASE_URL:-file:./dev.db}
+    volumes:
+      - echodub_web_storage:/app/storage
+      - echodub_web_db:/app/prisma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/admin/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  echodub_web_storage:
+    driver: local
+  echodub_web_db:
+    driver: local

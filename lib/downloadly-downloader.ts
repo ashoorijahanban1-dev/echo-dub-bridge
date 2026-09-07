@@ -1,12 +1,13 @@
 import fs from "fs";
 import path from "path";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import util from "util";
 import dns from "dns";
 import https from "https";
 import http from "http";
 
 const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 
 export function extractRarLinksFromHtml(html: string): string[] {
   const rarRegex = /href=["'](https?:\/\/[^"']+\.(?:rar|zip|7z)[^"']*)["']/gi;
@@ -90,24 +91,41 @@ export async function downloadFileStream(url: string, destPath: string, timeoutS
     if (h2 && !hostnamesToResolve.includes(h2)) hostnamesToResolve.push(h2);
   } catch (e) {}
 
-  const resolveParts: string[] = [];
+  const curlResolves: string[] = [];
   for (const host of hostnamesToResolve) {
     const ip = await resolveHostIp(host);
     if (ip) {
-      resolveParts.push(`--resolve "${host}:443:${ip}" --resolve "${host}:80:${ip}"`);
+      curlResolves.push(`${host}:443:${ip}`);
+      curlResolves.push(`${host}:80:${ip}`);
     }
   }
-  const resolveArgs = resolveParts.join(" ");
   const maxResumeAttempts = 12;
 
   for (let attempt = 1; attempt <= maxResumeAttempts; attempt++) {
-    // If previous attempt failed with resolveArgs, try standard DNS on later attempts
-    const currentResolveArgs = attempt > 2 ? "" : resolveArgs;
-    const cmd = `curl -L -C - --fail --connect-timeout 45 --max-time ${timeoutSec} ${currentResolveArgs} --referer "https://downloadly.ir/" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "${destPath}" "${targetUrl}"`;
+    const curlArgs: string[] = [
+      "-L",
+      "-C", "-",
+      "--fail",
+      "--connect-timeout", "45",
+      "--max-time", String(timeoutSec),
+    ];
+
+    if (attempt <= 2) {
+      for (const resItem of curlResolves) {
+        curlArgs.push("--resolve", resItem);
+      }
+    }
+
+    curlArgs.push(
+      "--referer", "https://downloadly.ir/",
+      "-A", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "-o", destPath,
+      targetUrl
+    );
 
     try {
       console.log(`[Downloader] Download attempt ${attempt}/${maxResumeAttempts} for ${path.basename(destPath)}...`);
-      await execPromise(cmd);
+      await execFilePromise("curl", curlArgs);
 
       if (fs.existsSync(destPath) && fs.statSync(destPath).size > 5000) {
         console.log(`[Downloader] Download finished successfully: ${path.basename(destPath)} (${(fs.statSync(destPath).size / (1024*1024)).toFixed(1)} MB)`);
@@ -172,7 +190,7 @@ export async function extractRarArchive(rarFilePath: string, outputDir: string, 
 
   // List archive contents for diagnostics
   try {
-    const { stdout: listOut } = await execPromise(`"${unrarBin}" lb -p"${password}" "${rarFilePath}"`);
+    const { stdout: listOut } = await execFilePromise(unrarBin, ["lb", `-p${password}`, rarFilePath]);
     console.log(`[Downloader] Archive files found:\n${listOut.trim().split("\n").slice(0, 10).join("\n")}`);
   } catch (e: any) {
     console.log(`[Downloader] unrar lb warning: ${e.message}`);
@@ -180,9 +198,7 @@ export async function extractRarArchive(rarFilePath: string, outputDir: string, 
 
   // 1. Try official unrar extract with full paths (x) and destination with trailing slash
   try {
-    const cmdUnrarX = `"${unrarBin}" x -p"${password}" -y -o+ "${rarFilePath}" "${targetDir}"`;
-    console.log(`[Downloader] Executing: ${cmdUnrarX}`);
-    const { stdout: xOut, stderr: xErr } = await execPromise(cmdUnrarX);
+    const { stdout: xOut } = await execFilePromise(unrarBin, ["x", `-p${password}`, "-y", "-o+", rarFilePath, targetDir]);
     console.log("[Downloader] unrar x extraction completed:", xOut.slice(-200));
   } catch (errUnrar: any) {
     console.log("[Downloader] unrar x non-fatal warning/exit:", errUnrar.message);
@@ -190,17 +206,14 @@ export async function extractRarArchive(rarFilePath: string, outputDir: string, 
 
   // 2. Also try official unrar flat extract (e) to dump video files directly into targetDir
   try {
-    const cmdUnrarE = `"${unrarBin}" e -p"${password}" -y -o+ "${rarFilePath}" "${targetDir}"`;
-    console.log(`[Downloader] Executing fallback: ${cmdUnrarE}`);
-    await execPromise(cmdUnrarE);
+    await execFilePromise(unrarBin, ["e", `-p${password}`, "-y", "-o+", rarFilePath, targetDir]);
   } catch (errUnrarE: any) {
     console.log("[Downloader] unrar e non-fatal warning/exit:", errUnrarE.message);
   }
 
   // 3. Also try 7z extraction as secondary fallback
   try {
-    const cmd7z = `7z x -p"${password}" -y -o"${outputDir}" "${rarFilePath}"`;
-    await execPromise(cmd7z);
+    await execFilePromise("7z", ["x", `-p${password}`, "-y", `-o${outputDir}`, rarFilePath]);
   } catch (err7z: any) {
     console.log("[Downloader] 7z non-fatal warning/exit:", err7z.message);
   }

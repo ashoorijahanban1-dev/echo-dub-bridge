@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { verifyAdminToken } from "./lib/auth";
 
 // Simple in-memory rate limiting for API routes
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_API_REQUESTS_PER_WINDOW = 120; // 120 requests per min
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
   const path = request.nextUrl.pathname;
   const now = Date.now();
@@ -30,10 +31,21 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Admin Route Protection (/admin/* except /admin/login)
+  // 2. Admin Route Protection (/admin/* except /admin/login, and /api/admin/* except /api/admin/login)
+  const adminToken = request.cookies.get("echodub_admin_token")?.value;
+  const isTokenValid = await verifyAdminToken(adminToken);
+
+  if (path.startsWith("/api/admin") && path !== "/api/admin/login") {
+    if (!isTokenValid) {
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized: Invalid or expired admin session." }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   if (path.startsWith("/admin") && path !== "/admin/login") {
-    const adminToken = request.cookies.get("echodub_admin_token")?.value;
-    if (!adminToken || adminToken !== "echodub_auth_active_admin_session") {
+    if (!isTokenValid) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("callbackUrl", path);
       return NextResponse.redirect(loginUrl);

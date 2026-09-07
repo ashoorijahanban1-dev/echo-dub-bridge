@@ -21,9 +21,20 @@ export async function POST(request: Request) {
     }
 
     const { password } = await request.json();
-    const VALID_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123456";
+    const VALID_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-    if (!password || password !== VALID_ADMIN_PASSWORD) {
+    if (!VALID_ADMIN_PASSWORD) {
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { error: "تنظیمات ورود مدیریت ناقص است. لطفاً ADMIN_PASSWORD را در متغیرهای محیطی سرور تعریف کنید." },
+          { status: 500 }
+        );
+      }
+    }
+
+    const expectedPassword = VALID_ADMIN_PASSWORD || "admin123456";
+
+    if (!password || password !== expectedPassword) {
       attemptData.attempts += 1;
       if (attemptData.attempts >= MAX_ATTEMPTS) {
         attemptData.lockedUntil = now + LOCKOUT_DURATION_MS;
@@ -40,13 +51,17 @@ export async function POST(request: Request) {
     // Login success: reset attempts
     loginAttempts.delete(ip);
 
+    // Generate cryptographically signed JWT-like token
+    const { createAdminToken } = await import("@/lib/auth");
+    const sessionToken = await createAdminToken();
+
     // Set secure HTTP-Only cookie
     const cookieStore = await cookies();
-    cookieStore.set("echodub_admin_token", "echodub_auth_active_admin_session", {
+    cookieStore.set("echodub_admin_token", sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      sameSite: "strict",
+      maxAge: 60 * 60 * 24, // 24 hours
       path: "/",
     });
 

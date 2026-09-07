@@ -15,19 +15,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "slug و usOutputFile الزامی است." }, { status: 400 });
     }
 
-    const courseDir = path.join(process.cwd(), "storage", "courses", slug);
+    // Sanitize slug and fileName to prevent path traversal
+    const safeSlug = path.basename(slug).replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+    const safeBaseStorage = path.resolve(process.cwd(), "storage", "courses");
+    const courseDir = path.resolve(safeBaseStorage, safeSlug);
+
+    if (!courseDir.startsWith(safeBaseStorage)) {
+      return NextResponse.json({ error: "Invalid course slug path." }, { status: 400 });
+    }
+
     if (!fs.existsSync(courseDir)) {
       fs.mkdirSync(courseDir, { recursive: true });
     }
 
-    const localFileName = episodeFileName || "01. Bird strike dataset.mp4";
-    const destPath = path.join(courseDir, localFileName);
-    const usUrl = `http://ai.rpim.ir/api/v1/download/output/${encodeURIComponent(usOutputFile)}`;
+    const rawFileName = episodeFileName || "01. Bird strike dataset.mp4";
+    const safeFileName = path.basename(rawFileName).replace(/[\/\\]/g, "_");
+    const destPath = path.resolve(courseDir, safeFileName);
+
+    if (!destPath.startsWith(courseDir)) {
+      return NextResponse.json({ error: "Invalid episode file destination path." }, { status: 400 });
+    }
+
+    const usEngineBase = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://ai.rpim.ir";
+    const safeOutputFile = path.basename(usOutputFile);
+    const usUrl = `${usEngineBase.replace(/\/$/, "")}/api/v1/download/output/${encodeURIComponent(safeOutputFile)}`;
 
     console.log(`[SyncDubbed] Downloading ${usUrl} -> ${destPath}...`);
 
-    const curlCmd = `curl -sL --fail --connect-timeout 30 --max-time 600 -o "${destPath}.tmp" "${usUrl}" && mv "${destPath}.tmp" "${destPath}"`;
-    await execPromise(curlCmd);
+    const tempPath = `${destPath}.tmp`;
+    const headers: Record<string, string> = {};
+    if (process.env.INTERNAL_API_SECRET) {
+      headers["Authorization"] = `Bearer ${process.env.INTERNAL_API_SECRET}`;
+      headers["x-internal-secret"] = process.env.INTERNAL_API_SECRET;
+    }
+
+    const res = await fetch(usUrl, {
+      headers,
+      signal: AbortSignal.timeout(600000)
+    });
+
+    if (!res.ok || !res.body) {
+      throw new Error(`Failed to download output file from US engine: HTTP ${res.status}`);
+    }
+
+    const { pipeline } = await import("stream/promises");
+    const { Readable } = await import("stream");
+    const fileStream = fs.createWriteStream(tempPath);
+    await pipeline(Readable.fromWeb(res.body as any), fileStream);
+
+    if (fs.existsSync(tempPath)) {
+      fs.renameSync(tempPath, destPath);
+    }
 
     const stats = fs.existsSync(destPath) ? fs.statSync(destPath) : null;
     const fileSizeMb = stats ? (stats.size / (1024 * 1024)).toFixed(2) : 0;
@@ -69,7 +107,7 @@ export async function POST(request: Request) {
       update: {
         chapterId: chapter.id,
         streamUrl: `/api/stream/${epTargetId}`,
-        originalVideoUrl: `/storage/courses/${slug}/${localFileName}`,
+        originalVideoUrl: `/storage/courses/${safeSlug}/${safeFileName}`,
         telegramFileId: telegramFileId || null,
         telegramMessageId: telegramMessageId ? Number(telegramMessageId) : null,
         durationSeconds: 402,
@@ -79,11 +117,11 @@ export async function POST(request: Request) {
         id: epTargetId,
         chapterId: chapter.id,
         titleFa: "جلسه ۱: مجموعه داده برخورد پرندگان (دوبله فارسی هوش مصنوعی)",
-        titleEn: localFileName.replace(/\.mp4$/i, ""),
+        titleEn: safeFileName.replace(/\.mp4$/i, ""),
         episodeNumber: 1,
         durationSeconds: 402,
         streamUrl: `/api/stream/${epTargetId}`,
-        originalVideoUrl: `/storage/courses/${slug}/${localFileName}`,
+        originalVideoUrl: `/storage/courses/${safeSlug}/${safeFileName}`,
         telegramFileId: telegramFileId || null,
         telegramMessageId: telegramMessageId ? Number(telegramMessageId) : null,
         isFreePreview: true
@@ -98,7 +136,7 @@ export async function POST(request: Request) {
           where: { id: dockerCourse.chapters[0].episodes[0].id },
           data: {
             streamUrl: `/api/stream/${epTargetId}`,
-            originalVideoUrl: `/storage/courses/${slug}/${localFileName}`,
+            originalVideoUrl: `/storage/courses/${safeSlug}/${safeFileName}`,
             telegramFileId: telegramFileId || null
           }
         });

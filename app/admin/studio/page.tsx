@@ -87,7 +87,7 @@ export default function AdminStudioPage() {
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2.5">
             <Sparkles className="w-7 h-7 text-amber-400" />
-            استودیوی دوبله خودکار ویدیو (EchoDub Studio)
+            استودیوی دوبله خودکار ویدیو (RPIM TV Studio)
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
             لینک فایل ویدیوی آموزشی انگلیسی را وارد کنید تا تمام مراحل دوبله و مسترینگ به صورت خودکار انجام شود.

@@ -2,16 +2,17 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import CourseCard from "@/components/ui/CourseCard";
 import { 
-  Sparkles, 
+  Tv, 
   Play, 
   Zap, 
+  Sparkles, 
   ShieldCheck, 
-  Globe2, 
-  Cpu, 
   Layers, 
-  CheckCircle2, 
   ArrowLeft,
-  Headphones
+  Flame,
+  Volume2,
+  Subtitles,
+  Film
 } from "lucide-react";
 
 async function getFeaturedCourses() {
@@ -44,11 +45,11 @@ export default async function HomePage() {
       titleFa: "دوره جامع مستری داکر و کانتینرها (۲۰۲۶)",
       titleEn: "Docker Mastery: with Kubernetes + Swarm from a Docker Captain",
       instructor: "Bret Fisher",
-      category: "دواپس و کانتینرها",
+      category: "دواپس و زیرساخت",
       level: "مقدماتی تا پیشرفته",
       totalDurationMin: 540,
       thumbnailUrl: "https://images.unsplash.com/photo-1605745341112-85968b19335b?w=800&auto=format&fit=crop&q=80",
-      badgeText: "دوبله فارسی AI",
+      badgeText: "دوبله اختصاصی",
       rating: 4.9,
       studentsCount: 2450,
       chapters: [{ episodes: [{ id: "ep1" }] }]
@@ -63,7 +64,7 @@ export default async function HomePage() {
       level: "متوسط",
       totalDurationMin: 420,
       thumbnailUrl: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
-      badgeText: "دوبله هوشمند",
+      badgeText: "دوبله اختصاصی",
       rating: 4.95,
       studentsCount: 1890,
       chapters: [{ episodes: [{ id: "ep2" }] }]
@@ -89,7 +90,7 @@ export default async function HomePage() {
     <div className="space-y-20 pb-20">
       
       {/* 1. Hero Section */}
-      <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-28 overflow-hidden">
+      <section className="relative pt-10 pb-16 lg:pt-16 lg:pb-24 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
@@ -97,91 +98,94 @@ export default async function HomePage() {
             <div className="lg:col-span-7 space-y-6 text-right">
               
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-xs font-bold text-cyan-300 backdrop-blur-md shadow-glow">
-                <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
-                <span>اولین پلتفرم یادگیری با دوبله طبیعی هوش مصنوعی در ایران</span>
+                <Tv className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <span>شبکه پخش آنلاین آموزش‌های تخصصی و فناوری</span>
               </div>
 
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight">
-                برترین دوره‌های دنیا با{" "}
-                <span className="gradient-text-cyan">دوبله فارسی هوش مصنوعی</span>
+                تماشای روان برترین دوره‌های دنیا با{" "}
+                <span className="gradient-text-cyan">دوبله فارسی سلیس</span>
               </h1>
 
               <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl font-normal">
-                بدون محدودیت زبان انگلیسی و بدون افت سرعت یا فیلترشکن، تخصصی‌ترین دوره‌های بین‌المللی برنامه‌نویسی و مهندسی نرم‌افزار را با صدای طبیعی فارسی و روان‌ترین ترجمه کانتکست‌یار تماشا کنید.
+                دسترسـی آزاد و پیوسته به تخصصی‌ترین دوره‌های بین‌المللی برنامه‌نویسی، دواپس و معماری نرم‌افزار با صدای طبیعی و روان، تصویر Full HD و بدون کوچک‌ترین افت سرعت.
               </p>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-4 pt-4">
+              <div className="flex flex-wrap items-center gap-4 pt-2">
                 <Link
                   href="/courses"
                   className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-bold text-white shadow-glow hover:opacity-95 active:scale-95 transition-all text-sm"
                 >
                   <Play className="w-4 h-4 fill-white" />
-                  مشاهده دوره‌ها و شروع یادگیری
+                  شروع تماشا و آرشیو دوره‌ها
                 </Link>
 
                 <Link
-                  href="/admin/studio"
+                  href="/courses?category=devops"
                   className="flex items-center gap-2 px-6 py-3.5 rounded-xl glass-panel text-slate-200 hover:text-white hover:bg-slate-800/80 active:scale-95 transition-all text-sm font-semibold border border-slate-700/80"
                 >
-                  <Headphones className="w-4 h-4 text-cyan-400" />
-                  استودیوی دوبله جلسه جدید
+                  <Flame className="w-4 h-4 text-cyan-400" />
+                  دوره‌های منتخب ماه
                 </Link>
               </div>
 
-              {/* Trust & Highlights */}
+              {/* Highlights */}
               <div className="grid grid-cols-3 gap-4 pt-8 border-t border-slate-800/80 text-right">
                 <div>
-                  <div className="text-xl sm:text-2xl font-extrabold font-mono text-cyan-400">100%</div>
-                  <div className="text-xs text-slate-400 mt-0.5">صدای طبیعی بدون رباتیک</div>
+                  <div className="text-xl sm:text-2xl font-extrabold font-mono text-cyan-400">Full HD</div>
+                  <div className="text-xs text-slate-400 mt-0.5">کیفیت بالای تصویر و اسلایدها</div>
                 </div>
                 <div>
-                  <div className="text-xl sm:text-2xl font-extrabold font-mono text-violet-400">2 Audio</div>
-                  <div className="text-xs text-slate-400 mt-0.5">سوییچ فارسی و انگلیسی</div>
+                  <div className="text-xl sm:text-2xl font-extrabold font-mono text-violet-400">سلیس و گرم</div>
+                  <div className="text-xs text-slate-400 mt-0.5">گویندگی روان و بدون رباتیک</div>
                 </div>
                 <div>
-                  <div className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400">No-VPN</div>
-                  <div className="text-xs text-slate-400 mt-0.5">پخش پرسرعت نیم‌بها</div>
+                  <div className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400">استریم پایدار</div>
+                  <div className="text-xs text-slate-400 mt-0.5">پخش مستقیم و بی‌وقفه</div>
                 </div>
               </div>
 
             </div>
 
-            {/* Hero Right / Interactive Preview Card */}
+            {/* Hero Right / Modern Video Player Preview Card */}
             <div className="lg:col-span-5 relative">
               <div className="glass-panel rounded-3xl p-3 border border-slate-700/80 shadow-2xl relative group">
                 <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-900">
                   <img
                     src="https://images.unsplash.com/photo-1605745341112-85968b19335b?w=800&auto=format&fit=crop&q=80"
-                    alt="پیش‌نمایش پلیر"
+                    alt="پیش‌نمایش تلویزیون RPIM"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent flex flex-col justify-between p-4">
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent flex flex-col justify-between p-4">
                     <div className="flex justify-between items-center">
-                      <span className="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-[10px] font-bold text-cyan-300 border border-cyan-500/30">
-                        ⚡ دوبله صدم‌ثانیه‌ای Gemini 3
+                      <span className="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-[11px] font-bold text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        در حال پخش
                       </span>
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                      <span className="px-2 py-0.5 rounded bg-slate-900/80 border border-slate-700 text-[10px] text-slate-300 font-mono">
+                        1080p
+                      </span>
                     </div>
 
-                    <div className="space-y-1">
-                      <div className="text-xs font-bold text-white">دوره جامع داکر و کوبرنتیز</div>
-                      <div className="text-[10px] text-cyan-300 font-mono">جلسه ۱: مفاهیم کانتینرها و ایمیج‌ها</div>
-                      <div className="w-full h-1 bg-slate-800 rounded-full mt-2 overflow-hidden">
-                        <div className="w-2/3 h-full bg-gradient-to-r from-cyan-400 to-violet-500 rounded-full" />
+                    <div className="space-y-1.5">
+                      <div className="text-sm font-bold text-white">دوره جامع داکر و کوبرنتیز</div>
+                      <div className="text-xs text-cyan-300">قسمت اول: مفاهیم کانتینرها و معماری ابری</div>
+                      <div className="w-full h-1.5 bg-slate-800/90 rounded-full mt-2 overflow-hidden">
+                        <div className="w-3/5 h-full bg-gradient-to-r from-cyan-400 to-violet-500 rounded-full" />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Floating Tech Pill */}
-                <div className="absolute -bottom-4 -left-4 glass-panel px-4 py-2.5 rounded-2xl border border-violet-500/40 shadow-glowPurple flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-violet-600/30 flex items-center justify-center text-violet-300">
-                    <Cpu className="w-4 h-4" />
+                {/* Floating Media Pill */}
+                <div className="absolute -bottom-4 -left-4 glass-panel px-4 py-2.5 rounded-2xl border border-cyan-500/40 shadow-glow flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-600/30 flex items-center justify-center text-cyan-300">
+                    <Volume2 className="w-4 h-4" />
                   </div>
                   <div className="text-right">
-                    <div className="text-[11px] font-bold text-white">دیکشنری اصطلاحات IT</div>
-                    <div className="text-[9px] text-slate-400">حفظ کلماتی مثل Deploy, Container, State</div>
+                    <div className="text-[11px] font-bold text-white">دوبله اختصاصی و زیرنویس همگام</div>
+                    <div className="text-[9px] text-slate-400">تلفظ دقیق تمامی اصطلاحات فنی</div>
                   </div>
                 </div>
 
@@ -192,14 +196,14 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2. Features Grid */}
+      {/* 2. Media Pillars */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-            چرا یادگیری با <span className="gradient-text-cyan">EchoDub AI</span> متفاوت است؟
+            تجربه تماشای هوشمند در <span className="gradient-text-cyan">RPIM TV</span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-400">
-            تجربه‌ای مدرن با ترکیب هوش مصنوعی، استریم لبه و پلیر اختصاصی دوزبانه
+            طراحی شده برای یادگیری متمرکز، بدون خستگی و بدون محدودیت زبانی
           </p>
         </div>
 
@@ -207,31 +211,31 @@ export default async function HomePage() {
           
           <div className="glass-panel glass-panel-hover p-6 rounded-2xl border border-slate-800 space-y-3">
             <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-              <Zap className="w-6 h-6" />
+              <Play className="w-6 h-6 fill-cyan-400" />
             </div>
-            <h3 className="text-base font-bold text-white">پلیر دوزبانه (Dual-Audio)</h3>
+            <h3 className="text-base font-bold text-white">استریم پایدار و پرسرعت</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              هر لحظه که بخواهید، با یک کلیک بین صدای دوبله فارسی و صدای اصلی انگلیسی جابجا شوید بدون افت کیفیت یا مکث در ویدیو.
+              پخش روان و مستقیم ویدیوها با کمترین میزان بافرینگ، ترافیک بهینه و بدون نیاز به ابزارهای جانبی.
             </p>
           </div>
 
           <div className="glass-panel glass-panel-hover p-6 rounded-2xl border border-slate-800 space-y-3">
             <div className="w-12 h-12 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center">
-              <Sparkles className="w-6 h-6" />
+              <Volume2 className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-white">ترجمه کانتکست‌یار Gemini 3</h3>
+            <h3 className="text-base font-bold text-white">گویندگی رسا و طبیعی</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              هوش مصنوعی فقط متن را ترجمه نمی‌کند، بلکه مفاهیم فنی برنامه‌نویسی را درک کرده و با اصطلاحات رایج کامیونیتی توسعه‌دهندگان بیان می‌کند.
+              ترجمه مفهومی و دوبله تخصصی با لحن گرم و آموزشی، متناسب با واژگان رایج دنیای مهندسی و نرم‌افزار.
             </p>
           </div>
 
           <div className="glass-panel glass-panel-hover p-6 rounded-2xl border border-slate-800 space-y-3">
             <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <Globe2 className="w-6 h-6" />
+              <Subtitles className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-white">استریم داخلی بدون فیلترشکن</h3>
+            <h3 className="text-base font-bold text-white">زیرنویس همگام دو زبانه</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              با استفاده از معماری هوشمند پروکسی معکوس، تمامی ویدیوها با نهایت سرعت دانلود، ترافیک نیم‌بها و بدون نیاز به VPN پخش می‌شوند.
+              همراهی دقیق متن زیرنویس فارسی و انگلیسی برای درک عمیق‌تر مفاهیم و یادگیری همزمان واژگان اصلی زبان مبدأ.
             </p>
           </div>
 

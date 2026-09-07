@@ -102,7 +102,7 @@ export default async function CoursesCatalogPage({
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500 text-slate-950">
                 🎉 دسترسی رایگان و نامحدود
               </span>
-              <span className="text-xs text-emerald-300 font-semibold">کمپین رونمایی EchoDub AI</span>
+              <span className="text-xs text-emerald-300 font-semibold">کمپین رونمایی RPIM TV</span>
             </div>
             <h2 className="text-base sm:text-lg font-bold text-white">
               تمام دوره‌ها، صوت فارسی، زبان اصلی و زیرنویس‌ها به صورت ۱۰۰٪ رایگان در دسترس شماست!

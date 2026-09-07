@@ -135,8 +135,8 @@ export default async function WatchEpisodePage({
             courseTitle={course.titleFa}
             dubbedAudioUrl={currentEpisode.dubbedAudioUrl}
             originalAudioUrl={currentEpisode.originalAudioUrl}
-            subtitleFaUrl={currentEpisode.subtitleFaUrl}
-            subtitleEnUrl={currentEpisode.subtitleEnUrl}
+            subtitleFaUrl={currentEpisode.subtitleFaUrl || `/api/stream/${currentEpisode.id}/subtitles?lang=fa`}
+            subtitleEnUrl={currentEpisode.subtitleEnUrl || `/api/stream/${currentEpisode.id}/subtitles?lang=en`}
           />
 
           {/* Episode Info & Action Bar */}
@@ -170,6 +170,24 @@ export default async function WatchEpisodePage({
               </div>
               <div>
                 مدرس: <strong className="text-slate-200">{course.instructor || "مدرس بین‌المللی"}</strong>
+              </div>
+            </div>
+
+            {/* Subtitle & Offline Features */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80 text-xs">
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/api/stream/${currentEpisode.id}/subtitles?lang=fa&format=srt`}
+                  download={`${currentEpisode.titleEn || "subtitles"}_fa.srt`}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center gap-1.5 transition-colors font-medium"
+                  title="دانلود فایل زیرنویس هماهنگ فارسی برای پلیرهای آفلاین"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  دانلود زیرنویس فارسی (SRT)
+                </a>
+              </div>
+              <div className="text-slate-400">
+                پخش هوشمند در شبکه اختصاصی <strong className="text-cyan-400">RPIM TV</strong>
               </div>
             </div>
           </div>

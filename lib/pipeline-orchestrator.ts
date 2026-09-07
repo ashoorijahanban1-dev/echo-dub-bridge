@@ -483,10 +483,33 @@ export async function startDubbingPipeline({
             `در حال همگام‌سازی ویدیوی دوبله شده فارسی از سرور آمریکا به سرور ایران...`,
             "INFO"
           );
-          const usDownloadUrl = `http://ai.rpim.ir/api/v1/download/output/${encodeURIComponent(outputFilename)}`;
-          const downloadCmd = `curl -sL --connect-timeout 30 --max-time 600 -o "${realExtractedVideoPath}.tmp" "${usDownloadUrl}" && mv "${realExtractedVideoPath}.tmp" "${realExtractedVideoPath}"`;
-          const { execSync } = require("child_process");
-          execSync(downloadCmd);
+          const usEngineBase = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://ai.rpim.ir";
+          const usDownloadUrl = `${usEngineBase.replace(/\/$/, "")}/api/v1/download/output/${encodeURIComponent(outputFilename)}`;
+          const tempPath = `${realExtractedVideoPath}.tmp`;
+
+          const headers: Record<string, string> = {};
+          if (process.env.INTERNAL_API_SECRET) {
+            headers["Authorization"] = `Bearer ${process.env.INTERNAL_API_SECRET}`;
+            headers["x-internal-secret"] = process.env.INTERNAL_API_SECRET;
+          }
+
+          const response = await fetch(usDownloadUrl, {
+            headers,
+            signal: AbortSignal.timeout(600000) // 10 minutes timeout
+          });
+
+          if (!response.ok || !response.body) {
+            throw new Error(`Failed to download from US engine: HTTP ${response.status} ${response.statusText}`);
+          }
+
+          const { pipeline } = await import("stream/promises");
+          const { Readable } = await import("stream");
+          const fileStream = fs.createWriteStream(tempPath);
+          await pipeline(Readable.fromWeb(response.body as any), fileStream);
+
+          if (fs.existsSync(tempPath)) {
+            fs.renameSync(tempPath, realExtractedVideoPath);
+          }
           await logPipelineEvent(
             batch.id,
             "DOWNLOADER",

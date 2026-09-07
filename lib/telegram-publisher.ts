@@ -1,8 +1,9 @@
 import { prisma } from "./prisma";
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "8773331933:AAHOavxMB4jHC6CTojqBXjLM13NG6ERh2Ic";
-const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || "-1004449817719";
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || "";
 const US_ENGINE_URL = process.env.NEXT_PUBLIC_US_ENGINE_URL || "http://75glmxpk5jxiudgaa1jzsny9.209.145.63.253.sslip.io";
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || "";
 
 export interface TelegramPublishOptions {
   courseTitleFa: string;
@@ -22,9 +23,14 @@ export interface TelegramPublishOptions {
 async function callTelegramAPI(method: string, payload: any): Promise<any> {
   // 1. First attempt: US AI Engine Proxy (bypasses Iran filtering 100%)
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (INTERNAL_API_SECRET) {
+      headers["x-internal-secret"] = INTERNAL_API_SECRET;
+      headers["Authorization"] = `Bearer ${INTERNAL_API_SECRET}`;
+    }
     const pRes = await fetch(`${US_ENGINE_URL}/api/v1/telegram/proxy`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ method, payload }),
       signal: AbortSignal.timeout(15000)
     });
@@ -39,6 +45,11 @@ async function callTelegramAPI(method: string, payload: any): Promise<any> {
   }
 
   // 2. Second attempt: Direct Telegram Bot API
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.warn("TELEGRAM_BOT_TOKEN is not configured in environment variables.");
+    return { ok: false, description: "TELEGRAM_BOT_TOKEN is not configured" };
+  }
+
   try {
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`, {
       method: "POST",
@@ -74,9 +85,9 @@ export async function publishCourseToTelegram(opts: TelegramPublishOptions) {
   } = opts;
 
   const webCourseUrl = `https://rpim.ir/courses/${slug}`;
-  const botUsername = "EchoDub_bot";
+  const botUsername = "rpim_bot";
 
-  const captionHtml = `🎬 <b>دوره جدید با دوبله فارسی هوش مصنوعی</b>\n\n📌 <b>عنوان:</b> ${courseTitleFa}\n${courseTitleEn ? `🌐 <b>Original:</b> <i>${courseTitleEn}</i>\n` : ""}🎙 <b>دوبله هوش مصنوعی:</b> فارسی روان و تخصصی (EchoDub AI)\n👨‍🏫 <b>مدرس:</b> ${instructor}\n🏷 <b>دسته‌بندی:</b> ${category}\n⚡ <b>کیفیت:</b> 1080p Full HD\n\n🔗 <b>تماشا و استریم آنلاین در وبسایت:</b>\n<a href="${webCourseUrl}">${webCourseUrl}</a>\n\n🆔 @${botUsername} | 🌐 rpim.ir`;
+  const captionHtml = `🎬 <b>دوره جدید با دوبله فارسی هوش مصنوعی (RPIM TV)</b>\n\n📌 <b>عنوان:</b> ${courseTitleFa}\n${courseTitleEn ? `🌐 <b>Original:</b> <i>${courseTitleEn}</i>\n` : ""}🎙 <b>دوبله هوش مصنوعی:</b> فارسی روان و تخصصی (RPIM TV)\n👨‍🏫 <b>مدرس:</b> ${instructor}\n🏷 <b>دسته‌بندی:</b> ${category}\n⚡ <b>کیفیت:</b> 1080p Full HD\n\n🔗 <b>تماشا و استریم آنلاین در وبسایت:</b>\n<a href="${webCourseUrl}">${webCourseUrl}</a>\n\n🆔 @rpim_ir | 🌐 rpim.ir`;
 
   let sentMessageId: number | null = null;
   let sentFileId: string | null = null;
