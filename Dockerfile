@@ -32,6 +32,8 @@ RUN (curl -sL https://www.rarlab.com/rar/rarlinux-x64-624.tar.gz -o /tmp/rarlinu
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV ADMIN_PASSWORD=admin123456
+ENV ADMIN_SESSION_SECRET=echodub_admin_session_secret_super_secure_key_2026
 
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules

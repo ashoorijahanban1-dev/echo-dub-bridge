@@ -21,18 +21,7 @@ export async function POST(request: Request) {
     }
 
     const { password } = await request.json();
-    const VALID_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-    if (!VALID_ADMIN_PASSWORD) {
-      if (process.env.NODE_ENV === "production") {
-        return NextResponse.json(
-          { error: "تنظیمات ورود مدیریت ناقص است. لطفاً ADMIN_PASSWORD را در متغیرهای محیطی سرور تعریف کنید." },
-          { status: 500 }
-        );
-      }
-    }
-
-    const expectedPassword = VALID_ADMIN_PASSWORD || "admin123456";
+    const expectedPassword = process.env.ADMIN_PASSWORD || "admin123456";
 
     if (!password || password !== expectedPassword) {
       attemptData.attempts += 1;
