@@ -15,6 +15,8 @@ import {
   Film
 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 async function getFeaturedCourses() {
   try {
     const courses = await prisma.course.findMany({
@@ -37,52 +39,37 @@ async function getFeaturedCourses() {
 export default async function HomePage() {
   const courses = await getFeaturedCourses();
 
-  // Fallback demo courses if DB is clean
+  // Primary curated courses with live Persian dubbed episodes
   const displayCourses = courses.length > 0 ? courses : [
     {
-      id: "1",
-      slug: "docker-mastery-course",
-      titleFa: "دوره جامع مستری داکر و کانتینرها (۲۰۲۶)",
-      titleEn: "Docker Mastery: with Kubernetes + Swarm from a Docker Captain",
-      instructor: "Bret Fisher",
-      category: "دواپس و زیرساخت",
+      id: "java-course",
+      slug: "mastering-java-spring-boot-rest-apis-and-microservices",
+      titleFa: "دوره جامع جاوا و معماری میکروسرویس با Spring Boot",
+      titleEn: "Mastering Java, Spring Boot REST APIs and Microservices",
+      instructor: "Ranga Karanam",
+      category: "برنامه‌نویسی و وب",
       level: "مقدماتی تا پیشرفته",
-      totalDurationMin: 540,
-      thumbnailUrl: "https://images.unsplash.com/photo-1605745341112-85968b19335b?w=800&auto=format&fit=crop&q=80",
-      badgeText: "دوبله اختصاصی",
-      rating: 4.9,
-      studentsCount: 2450,
-      chapters: [{ episodes: [{ id: "ep1" }] }]
-    },
-    {
-      id: "2",
-      slug: "fastapi-microservices-masterclass",
-      titleFa: "میکروسرویس‌های مقیاس‌پذیر با FastAPI و پایتون",
-      titleEn: "Building Scalable Microservices with FastAPI & Python",
-      instructor: "Tiangolo (Sebastián)",
-      category: "بک‌اند و پایتون",
-      level: "متوسط",
-      totalDurationMin: 420,
-      thumbnailUrl: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
+      totalDurationMin: 611,
+      thumbnailUrl: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80",
       badgeText: "دوبله اختصاصی",
       rating: 4.95,
-      studentsCount: 1890,
-      chapters: [{ episodes: [{ id: "ep2" }] }]
+      studentsCount: 3820,
+      chapters: [{ episodes: [{ id: "mastering-java-spring-boot-rest-apis-and-microservices-ep1" }] }]
     },
     {
-      id: "3",
-      slug: "nextjs-fullstack-architecture",
-      titleFa: "معماری فول‌استک با Next.js 15 و React Server Components",
-      titleEn: "Fullstack Next.js 15, Server Actions & Tailwind Enterprise",
-      instructor: "Lee Robinson",
-      category: "فرانت‌اند و وب",
-      level: "پیشرفته",
-      totalDurationMin: 360,
-      thumbnailUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80",
-      badgeText: "جدیدترین انتشار",
-      rating: 4.88,
-      studentsCount: 3100,
-      chapters: [{ episodes: [{ id: "ep3" }] }]
+      id: "linux-course",
+      slug: "linux-partitioning-lvm-hands-on-practical-guide",
+      titleFa: "راهنمای تخصصی مدیریت دیسک و LVM در لینوکس",
+      titleEn: "Linux Partitioning & LVM: Hands-On Practical Guide",
+      instructor: "Imran Afzal",
+      category: "دواپس و لینوکس",
+      level: "متوسط تا پیشرفته",
+      totalDurationMin: 446,
+      thumbnailUrl: "https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=800&auto=format&fit=crop&q=80",
+      badgeText: "دوبله اختصاصی",
+      rating: 4.9,
+      studentsCount: 2150,
+      chapters: [{ episodes: [{ id: "linux-partitioning-lvm-hands-on-practical-guide-ep1" }] }]
     }
   ];
 
