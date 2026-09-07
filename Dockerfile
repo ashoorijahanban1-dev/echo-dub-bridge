@@ -39,7 +39,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 RUN mkdir -p /app/storage/courses /app/storage/downloads /app/storage/extracted /app/prisma && \
-    chown -R node:node /app
+    chown -R node:node /app/storage /app/prisma
 
 USER node
 
