@@ -29,6 +29,15 @@ const COURSES_DATA = [
             streamUrl: "/api/stream/mastering-java-spring-boot-rest-apis-and-microservices-ep1",
             originalVideoUrl: "/storage/courses/mastering-java-spring-boot-rest-apis-and-microservices/1. Introduction.mp4",
             isFreePreview: true,
+          },
+          {
+            titleFa: "جلسه دوم: معرفی جامع Java + Spring Boot + SQL + JDBC",
+            titleEn: "1. Java + Spring Boot + SQL + JDBC - Introduction to the course",
+            episodeNumber: 2,
+            durationSeconds: 850,
+            streamUrl: "/api/stream/mastering-java-spring-boot-rest-apis-and-microservices-ep2",
+            originalVideoUrl: "/storage/courses/mastering-java-spring-boot-rest-apis-and-microservices/1. Java + Spring Boot + SQL + JDBC - Introduction to the course.mp4",
+            isFreePreview: true,
           }
         ]
       }
@@ -50,7 +59,7 @@ const COURSES_DATA = [
     studentsCount: 2150,
     chapters: [
       {
-        titleFa: "فصل اول: مدیریت پارتیشن‌ها و فضای ذخیره‌سازی",
+        titleFa: "فصل اول: مدیریت پارتیشن‌ها و فضای ذخیره‌سازی در لینوکس",
         orderIndex: 1,
         episodes: [
           {
@@ -61,6 +70,42 @@ const COURSES_DATA = [
             streamUrl: "/api/stream/linux-partitioning-lvm-hands-on-practical-guide-ep1",
             originalVideoUrl: "/storage/courses/linux-partitioning-lvm-hands-on-practical-guide/1 - Introduction.mp4",
             isFreePreview: true,
+          },
+          {
+            titleFa: "جلسه دوم: مدیریت پارتیشن‌های دیسک با ابزار gdisk",
+            titleEn: "2 - gdisk partition on Linux",
+            episodeNumber: 2,
+            durationSeconds: 420,
+            streamUrl: "/api/stream/linux-partitioning-lvm-hands-on-practical-guide-ep2",
+            originalVideoUrl: "/storage/courses/linux-partitioning-lvm-hands-on-practical-guide/2 - gdisk partition on Linux.mp4",
+            isFreePreview: true,
+          },
+          {
+            titleFa: "جلسه سوم: ایجاد و مدیریت پارتیشن‌های LVM (Logical Volume Manager)",
+            titleEn: "3 - LVM partition",
+            episodeNumber: 3,
+            durationSeconds: 410,
+            streamUrl: "/api/stream/linux-partitioning-lvm-hands-on-practical-guide-ep3",
+            originalVideoUrl: "/storage/courses/linux-partitioning-lvm-hands-on-practical-guide/3 - LVM partition.mp4",
+            isFreePreview: false,
+          },
+          {
+            titleFa: "جلسه چهارم: فرمت‌بندی و برچسب‌گذاری پارتیشن‌های دیسک در لینوکس",
+            titleEn: "4 - Formatting disk partition label in Linux",
+            episodeNumber: 4,
+            durationSeconds: 470,
+            streamUrl: "/api/stream/linux-partitioning-lvm-hands-on-practical-guide-ep4",
+            originalVideoUrl: "/storage/courses/linux-partitioning-lvm-hands-on-practical-guide/4 - Formatting disk partition label in Linux.mp4",
+            isFreePreview: false,
+          },
+          {
+            titleFa: "جلسه پنجم: جمع‌بندی جامع و نکات حرفه‌ای مدیریت دیسک",
+            titleEn: "5 - Summary of disk partition in Linux",
+            episodeNumber: 5,
+            durationSeconds: 360,
+            streamUrl: "/api/stream/linux-partitioning-lvm-hands-on-practical-guide-ep5",
+            originalVideoUrl: "/storage/courses/linux-partitioning-lvm-hands-on-practical-guide/5 - Summary of disk partition in Linux.mp4",
+            isFreePreview: false,
           }
         ]
       }
@@ -636,14 +681,16 @@ async function main() {
       });
 
       for (const epData of chData.episodes) {
+        const epId = `${cFields.slug}-ep${epData.episodeNumber}`;
         await prisma.episode.create({
           data: {
+            id: epId,
             chapterId: chapter.id,
             titleFa: epData.titleFa,
             titleEn: epData.titleEn,
             episodeNumber: epData.episodeNumber,
             durationSeconds: epData.durationSeconds,
-            streamUrl: epData.streamUrl || "/api/stream/video",
+            streamUrl: epData.streamUrl || `/api/stream/${epId}`,
             originalVideoUrl: epData.originalVideoUrl || null,
             telegramFileId: epData.telegramFileId || null,
             isFreePreview: epData.isFreePreview,
@@ -653,20 +700,7 @@ async function main() {
     }
   }
 
-  // Update any existing episode whose streamUrl has commondatastorage or sample-video.mp4
-  await prisma.episode.updateMany({
-    where: {
-      OR: [
-        { streamUrl: { contains: "commondatastorage" } },
-        { streamUrl: { contains: "sample-video.mp4" } }
-      ]
-    },
-    data: {
-      streamUrl: "/api/stream/video"
-    }
-  });
-
-  console.log("Database successfully seeded & updated with all 9 comprehensive courses!");
+  console.log("Database successfully seeded & updated with all courses and episodes!");
 }
 
 main()

@@ -78,10 +78,27 @@ export default async function WatchEpisodePage({
   }
 
   if (!currentEpisode) {
-    currentEpisode = course.chapters?.[0]?.episodes?.[0] || {
+    try {
+      currentEpisode = await prisma.episode.findFirst({
+        where: {
+          OR: [
+            { id: episodeId },
+            { id: `${slug}-${episodeId}` },
+            { streamUrl: { contains: episodeId } }
+          ]
+        }
+      });
+    } catch (e) {}
+  }
+
+  if (!currentEpisode) {
+    const epMatch = episodeId.match(/ep(\d+)/i) || episodeId.match(/(\d+)$/);
+    const parsedNum = epMatch ? parseInt(epMatch[1], 10) : 1;
+    currentEpisode = {
       id: episodeId,
-      titleFa: "جلسه اول: آموزش تخصصی و مقدمات",
-      titleEn: "Episode 1: Core Concepts",
+      titleFa: `جلسه ${parsedNum}: آموزش تخصصی و عملی`,
+      titleEn: `Episode ${parsedNum}`,
+      episodeNumber: parsedNum,
       streamUrl: `/api/stream/${episodeId}`,
       durationSeconds: 480,
     };

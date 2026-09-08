@@ -68,29 +68,20 @@ export default function VideoPlayer({
   const [hasStreamError, setHasStreamError] = useState(false);
 
   useEffect(() => {
-    // If streamUrl is empty, relative sample, or blocked Google storage, use local HTTP 206 stream
-    if (
-      !streamUrl ||
-      streamUrl.includes("commondatastorage.googleapis.com") ||
-      streamUrl === "/sample-video.mp4"
-    ) {
-      setCurrentSrc("/api/stream/video");
-    } else {
+    if (streamUrl) {
       setCurrentSrc(streamUrl);
+    } else if (episodeId) {
+      setCurrentSrc(`/api/stream/${episodeId}`);
+    } else {
+      setCurrentSrc("/api/stream/video");
     }
     setHasStreamError(false);
   }, [streamUrl, episodeId]);
 
   const handleVideoError = () => {
-    console.warn("Video stream load error from:", currentSrc, "- switching to domestic fallback stream");
-    if (currentSrc !== "/api/stream/video") {
-      setCurrentSrc("/api/stream/video");
-      setHasStreamError(true);
-      if (videoRef.current) {
-        videoRef.current.load();
-        videoRef.current.play().catch(() => {});
-      }
-    }
+    console.warn("Video stream load error from:", currentSrc);
+    setHasStreamError(true);
+    setIsPlaying(false);
   };
 
   // 1. Resume Playback from LocalStorage
@@ -332,6 +323,46 @@ export default function VideoPlayer({
           />
         )}
       </video>
+
+      {/* Queued for Studio Dubbing Overlay */}
+      {hasStreamError && (
+        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10">
+            <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" />
+          </div>
+          <div className="space-y-1.5 max-w-md">
+            <span className="px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-[11px] font-bold text-cyan-300">
+              استودیو هوش مصنوعی RPIM TV
+            </span>
+            <h3 className="text-base sm:text-lg font-bold text-white pt-1">
+              این جلسه در نوبت دوبله هوشمند قرار دارد
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              ویدیوی <strong className="text-slate-200">{title}</strong> در حال حاضر در استودیوی هوش مصنوعی RPIM TV در صف صداگذاری و دوبله به زبان فارسی است و پس از اتمام پردازش آماده تماشا خواهد شد.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={() => {
+                setHasStreamError(false);
+                if (videoRef.current) {
+                  videoRef.current.load();
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              بررسی مجدد وضعیت
+            </button>
+            <a
+              href={`/courses/${episodeId.replace(/-ep\d+$/, "")}`}
+              className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-semibold text-white transition-colors"
+            >
+              مشاهده سایر جلسات
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Permanent RPIM TV Broadcast Station Watermark (precision coverage for top-right source watermark) */}
       <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none select-none">

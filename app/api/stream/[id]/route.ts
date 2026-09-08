@@ -3,8 +3,33 @@ import { prisma } from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
 
-function findLocalDubbedFile(episode: any, id: string): string | null {
-  const candidatePaths: string[] = [];
+// Known episode file mappings for courses
+const COURSE_EPISODE_MAP: Record<string, Record<number, string>> = {
+  linux: {
+    1: "1 - Introduction.mp4",
+    2: "2 - gdisk partition on Linux.mp4",
+    3: "3 - LVM partition.mp4",
+    4: "4 - Formatting disk partition label in Linux.mp4",
+    5: "5 - Summary of disk partition in Linux.mp4"
+  },
+  java: {
+    1: "1. Introduction.mp4",
+    2: "1. Java + Spring Boot + SQL + JDBC - Introduction to the course.mp4"
+  }
+};
+
+function parseEpisodeNumber(id: string, episode: any): number | null {
+  if (episode?.episodeNumber && typeof episode.episodeNumber === "number") {
+    return episode.episodeNumber;
+  }
+  const match = id.match(/ep(\d+)/i) || id.match(/_(\d+)$/) || id.match(/-(\d+)$/);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return null;
+}
+
+function findLocalDubbedFile(episode: any, id: string, epNum: number | null): string | null {
   const outputDirs = [
     path.join("/app", "storage", "output"),
     path.join(process.cwd(), "storage", "output")
@@ -14,7 +39,6 @@ function findLocalDubbedFile(episode: any, id: string): string | null {
     ? path.basename(episode.originalVideoUrl).toLowerCase()
     : "";
   const titleEn = episode?.titleEn ? episode.titleEn.toLowerCase() : "";
-  const epNum = episode?.episodeNumber || 1;
 
   for (const oDir of outputDirs) {
     if (fs.existsSync(oDir)) {
@@ -23,29 +47,41 @@ function findLocalDubbedFile(episode: any, id: string): string | null {
         const match = files.find(f => {
           const fl = f.toLowerCase();
           if (!fl.endsWith(".mp4")) return false;
-          return (
-            (targetBasename && fl.includes(targetBasename)) ||
-            (titleEn && fl.includes(titleEn)) ||
-            fl.includes(`_${epNum}.`) ||
-            fl.includes(`_${epNum} `) ||
-            fl.includes(`-${epNum}.`) ||
-            fl.includes(`-${epNum} `) ||
-            fl.includes(id.toLowerCase())
-          );
-        });
-        if (match) {
-          candidatePaths.push(path.join(oDir, match));
-        }
-      } catch (e) {}
-    }
-  }
 
-  for (const p of candidatePaths) {
-    if (p && fs.existsSync(p)) {
-      try {
-        const st = fs.statSync(p);
-        if (st.isFile() && st.size > 1000) {
-          return p;
+          // 1. Exact basename match from originalVideoUrl
+          if (targetBasename && fl.includes(targetBasename)) return true;
+
+          // 2. Exact title match (if long enough to avoid false positives)
+          if (titleEn && titleEn.length > 5 && fl.includes(titleEn)) return true;
+
+          // 3. Strict episode number match ONLY if filename also contains course hints
+          if (epNum !== null) {
+            const hasEpNum = (
+              fl.includes(`_${epNum}.`) ||
+              fl.includes(`_${epNum} `) ||
+              fl.includes(`_${epNum}-`) ||
+              fl.includes(`_${epNum}_`) ||
+              fl.includes(`-${epNum}.`) ||
+              fl.includes(`-${epNum} `)
+            );
+            if (!hasEpNum) return false;
+
+            if (id.includes("linux") && (fl.includes("linux") || fl.includes("lvm") || fl.includes("partition") || fl.includes("gdisk") || fl.includes("introduction"))) {
+              return true;
+            }
+            if (id.includes("java") && (fl.includes("java") || fl.includes("spring") || fl.includes("jdbc") || fl.includes("introduction"))) {
+              return true;
+            }
+          }
+
+          return false;
+        });
+
+        if (match) {
+          const fullPath = path.join(oDir, match);
+          if (fs.existsSync(fullPath) && fs.statSync(fullPath).size > 10000) {
+            return fullPath;
+          }
         }
       } catch (e) {}
     }
@@ -95,8 +131,10 @@ export async function GET(
       return NextResponse.redirect(episode.streamUrl, 307);
     }
 
+    const epNum = parseEpisodeNumber(id, episode);
+
     // 2. Locate local DUBBED file on disk (ONLY from storage/output, NEVER raw un-dubbed files)
-    targetFilePath = findLocalDubbedFile(episode, id);
+    targetFilePath = findLocalDubbedFile(episode, id, epNum);
 
     // 3. Fallback: If not on local disk yet, proxy dubbed stream from US AI Engine / Telegram CDN
     if (!targetFilePath) {
@@ -111,12 +149,18 @@ export async function GET(
         candidateNames.push(`${episode.titleEn}.mp4`);
         candidateNames.push(episode.titleEn);
       }
-      if (id.includes("linux") || id.includes("lvm")) {
-        candidateNames.push("1 - Introduction.mp4");
+
+      // Add strict course-episode mapping (NEVER fall back to Ep 1 for other episodes!)
+      if (epNum !== null) {
+        if (id.includes("linux") || id.includes("lvm")) {
+          const linuxFile = COURSE_EPISODE_MAP.linux[epNum];
+          if (linuxFile) candidateNames.push(linuxFile);
+        } else if (id.includes("java") || id.includes("spring")) {
+          const javaFile = COURSE_EPISODE_MAP.java[epNum];
+          if (javaFile) candidateNames.push(javaFile);
+        }
       }
-      if (id.includes("java") || id.includes("spring")) {
-        candidateNames.push("1. Introduction.mp4");
-      }
+
       candidateNames.push(`${id}.mp4`);
 
       // Try candidates in order against US dubbing engine
@@ -198,18 +242,19 @@ export async function GET(
           console.error("Telegram CDN stream error:", tgErr);
         }
       }
-
-      // Fallback to sample video if available
-      const samplePath = path.join("/app", "public", "sample-video.mp4");
-      if (fs.existsSync(samplePath) && fs.statSync(samplePath).size > 1000) {
-        targetFilePath = samplePath;
-      }
     }
 
-    // 4. If still no video source found, return 404
+    // 4. If no dubbed video source exists, return clean 404 with status information
+    // DO NOT silently play Episode 1 or sample video!
     if (!targetFilePath || !fs.existsSync(targetFilePath)) {
       return NextResponse.json(
-        { error: "ویدیوی این جلسه هنوز آماده نشده است.", code: "VIDEO_NOT_FOUND" },
+        {
+          status: "QUEUED_FOR_DUBBING",
+          code: "EPISODE_IN_PROGRESS",
+          message: "این جلسه در استودیوی هوش مصنوعی RPIM TV در نوبت دوبله قرار دارد.",
+          episodeId: id,
+          episodeNumber: epNum
+        },
         { status: 404 }
       );
     }
@@ -270,4 +315,3 @@ export async function GET(
     return new NextResponse(`Stream error: ${error.message}`, { status: 500 });
   }
 }
-
