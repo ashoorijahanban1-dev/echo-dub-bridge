@@ -90,6 +90,74 @@ function findLocalDubbedFile(episode: any, id: string, epNum: number | null): st
   return null;
 }
 
+/**
+ * Find dubbed file on US engine by querying the /api/v1/output/list endpoint,
+ * then matching by episode's original basename or titleEn.
+ * Returns the exact filename to use with /api/v1/stream/output/{filename}
+ */
+async function findDubbedFileOnUsEngine(
+  usEngineIp: string,
+  usHostHeader: string,
+  episode: any,
+  id: string,
+  epNum: number | null
+): Promise<string | null> {
+  try {
+    const listUrl = `http://${usEngineIp}/api/v1/output/list`;
+    const listRes = await fetch(listUrl, {
+      headers: {
+        "Host": usHostHeader,
+        "User-Agent": "RPIM-Internal-Stream-Proxy/1.0"
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (!listRes.ok) return null;
+
+    const files: any[] = await listRes.json();
+    if (!Array.isArray(files)) return null;
+
+    // Build search terms from episode data
+    const targetBasename = episode?.originalVideoUrl
+      ? decodeURIComponent(path.basename(episode.originalVideoUrl)).toLowerCase()
+      : "";
+    const titleEn = episode?.titleEn ? episode.titleEn.toLowerCase() : "";
+
+    // Get episode map basename
+    let epMapBasename = "";
+    if (epNum !== null) {
+      if (id.includes("linux") || id.includes("lvm")) {
+        epMapBasename = (COURSE_EPISODE_MAP.linux[epNum] || "").toLowerCase();
+      } else if (id.includes("java") || id.includes("spring")) {
+        epMapBasename = (COURSE_EPISODE_MAP.java[epNum] || "").toLowerCase();
+      }
+    }
+
+    // Find matching file in the list
+    const match = files.find((f: any) => {
+      const fname: string = (f.filename || f.name || f || "").toLowerCase();
+      if (!fname.endsWith(".mp4")) return false;
+
+      // Decode URL-encoded names (job_123_2%20-%20gdisk... → 2 - gdisk...)
+      const fDecoded = decodeURIComponent(fname);
+
+      if (targetBasename && (fname.includes(targetBasename) || fDecoded.includes(targetBasename))) return true;
+      if (titleEn && titleEn.length > 5 && (fname.includes(titleEn) || fDecoded.includes(titleEn))) return true;
+      if (epMapBasename && (fname.includes(epMapBasename.replace(".mp4", "")) || fDecoded.includes(epMapBasename.replace(".mp4", "")))) return true;
+
+      return false;
+    });
+
+    if (match) {
+      return match.filename || match.name || match;
+    }
+  } catch (e) {
+    console.error("US engine output list error:", e);
+  }
+  return null;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -141,7 +209,18 @@ export async function GET(
       const usEngineIp = process.env.US_ENGINE_IP || "209.145.63.253";
       const usHostHeader = process.env.US_ENGINE_HOST_HEADER || "ai.rpim.ir";
 
+      // STEP 3A: Query US engine's output list to find the exact dubbed filename
+      const engineFoundFilename = await findDubbedFileOnUsEngine(usEngineIp, usHostHeader, episode, id, epNum);
+
+      // Build candidate names - prefer exact match from engine list
       const candidateNames: string[] = [];
+
+      if (engineFoundFilename) {
+        // Use the exact filename found from engine's output list
+        candidateNames.push(engineFoundFilename);
+      }
+
+      // Also try common patterns as fallback
       if (episode?.originalVideoUrl) {
         candidateNames.push(path.basename(episode.originalVideoUrl));
       }
@@ -178,7 +257,8 @@ export async function GET(
 
           const upstreamRes = await fetch(targetUsUrl, {
             headers: upstreamHeaders,
-            cache: "no-store"
+            cache: "no-store",
+            signal: AbortSignal.timeout(15000)
           });
 
           if (upstreamRes.ok || upstreamRes.status === 206) {
@@ -218,7 +298,8 @@ export async function GET(
 
           const upstreamRes = await fetch(targetUsUrl, {
             headers: upstreamHeaders,
-            cache: "no-store"
+            cache: "no-store",
+            signal: AbortSignal.timeout(15000)
           });
 
           if (upstreamRes.ok || upstreamRes.status === 206) {
