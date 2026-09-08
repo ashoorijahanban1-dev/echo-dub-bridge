@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
-import { uploadDubbingFileDirect, getDubbingJobStatusDirect } from "@/lib/us-engine-client";
+import { uploadDubbingFileDirect, submitDubbingJobDirect, getDubbingJobStatusDirect } from "@/lib/us-engine-client";
 
 export async function POST(request: Request) {
   try {
@@ -78,11 +78,15 @@ export async function POST(request: Request) {
       }, { status: 404 });
     }
 
-    const title = episode?.titleEn || episode?.titleFa || path.basename(filePath);
-    console.log(`[TriggerDub] Uploading ${filePath} to US engine for dubbing...`);
+    const courseSlug = slug || episode?.chapter?.course?.slug || "linux-partitioning-lvm-hands-on-practical-guide";
+    const fileName = path.basename(filePath);
+    const title = episode?.titleEn || episode?.titleFa || fileName;
+    const videoUrl = `https://rpim.ir/api/stream/raw/${courseSlug}/${encodeURIComponent(fileName)}`;
 
-    const result = await uploadDubbingFileDirect({
-      filePath,
+    console.log(`[TriggerDub] Submitting URL ${videoUrl} to US engine for dubbing...`);
+
+    const result = await submitDubbingJobDirect({
+      video_url: videoUrl,
       title,
       voice_gender: voiceGender || "male",
       preserve_bgm: true
@@ -90,10 +94,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "فایل ویدیوی جلسه با موفقیت به موتور دوبله آمریکا ارسال و در صف پردازش قرار گرفت.",
+      message: "درخواست دوبله هوشمند با موفقیت به موتور آمریکا ارسال شد.",
       jobId: result.job_id,
       status: result.status,
-      file: path.basename(filePath)
+      videoUrl,
+      file: fileName
     });
 
   } catch (error: any) {
