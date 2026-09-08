@@ -115,8 +115,12 @@ async function findDubbedFileOnUsEngine(
 
     if (!listRes.ok) return null;
 
-    const files: any[] = await listRes.json();
-    if (!Array.isArray(files)) return null;
+    const rawData: any = await listRes.json();
+    // US engine returns { outputs: [...] } or direct array
+    const files: any[] = Array.isArray(rawData)
+      ? rawData
+      : (rawData.outputs || rawData.files || rawData.data || []);
+    if (!Array.isArray(files) || files.length === 0) return null;
 
     // Build search terms from episode data
     const targetBasename = episode?.originalVideoUrl
